@@ -4,6 +4,10 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/hashicorp/go-plugin"
 
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
@@ -11,6 +15,17 @@ import (
 )
 
 func main() {
+	vmID, err := PrintVMID()
+	if err != nil {
+		fmt.Printf("couldn't get config: %s", err)
+		os.Exit(1)
+	}
+	if vmID {
+		fmt.Println(timestampvm.ID)
+		os.Exit(0)
+	}
+
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: rpcchainvm.Handshake,
 		Plugins: map[string]plugin.Plugin{

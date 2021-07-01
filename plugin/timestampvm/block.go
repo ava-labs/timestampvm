@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/vms/components/core"
 )
 
@@ -15,6 +16,8 @@ var (
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errDatabaseSave      = errors.New("error while saving block to the database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
+
+	_ snowman.Block = &Block{}
 )
 
 // Block is a block on the chain.
