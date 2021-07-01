@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/gorilla/rpc/v2"
 
 	"github.com/ava-labs/avalanchego/codec"
@@ -62,7 +63,7 @@ func (vm *VM) Initialize(
 	_ []*common.Fx,
 ) error {
 	if err := vm.SnowmanVM.Initialize(ctx, dbManager.Current().Database, vm.ParseBlock, toEngine); err != nil {
-		ctx.Log.Error("error initializing SnowmanVM: %v", err)
+		log.Error("error initializing SnowmanVM: %v", err)
 		return err
 	}
 	c := linearcodec.NewDefault()
@@ -87,12 +88,12 @@ func (vm *VM) Initialize(
 		// Timestamp of genesis block is 0. It has no parent.
 		genesisBlock, err := vm.NewBlock(ids.Empty, 0, genesisDataArr, time.Unix(0, 0))
 		if err != nil {
-			vm.Ctx.Log.Error("error while creating genesis block: %v", err)
+			log.Error("error while creating genesis block: %v", err)
 			return err
 		}
 
 		if err := vm.SaveBlock(vm.DB, genesisBlock); err != nil {
-			vm.Ctx.Log.Error("error while saving genesis block: %v", err)
+			log.Error("error while saving genesis block: %v", err)
 			return err
 		}
 
@@ -108,7 +109,7 @@ func (vm *VM) Initialize(
 
 		// Flush VM's database to underlying db
 		if err := vm.DB.Commit(); err != nil {
-			vm.Ctx.Log.Error("error while committing db: %v", err)
+			log.Error("error while committing db: %v", err)
 			return err
 		}
 	}
@@ -119,7 +120,7 @@ func (vm *VM) Initialize(
 // Keys: The path extension for this VM's API (empty in this case)
 // Values: The handler for the API
 func (vm *VM) CreateHandlers() (map[string]*common.HTTPHandler, error) {
-	handler, err := vm.NewHandler("timestamp", &Service{vm})
+	handler, err := vm.NewHandler("timestampvm", &Service{vm})
 	return map[string]*common.HTTPHandler{
 		"": handler,
 	}, err
@@ -140,7 +141,7 @@ func (vm *VM) CreateStaticHandlers() (map[string]*common.HTTPHandler, error) {
 	staticService := CreateStaticService()
 	return map[string]*common.HTTPHandler{
 		"": {LockOptions: common.WriteLock, Handler: newServer},
-	}, newServer.RegisterService(staticService, "timestamp")
+	}, newServer.RegisterService(staticService, "timestampvm")
 }
 
 // Health implements the common.VM interface
