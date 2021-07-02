@@ -18,25 +18,48 @@ func CreateStaticService() *StaticService {
 	return &StaticService{}
 }
 
-// BuildGenesisArgs are arguments for BuildGenesis
-type BuildGenesisArgs struct {
-	GenesisData string              `json:"genesisData"`
-	Encoding    formatting.Encoding `json:"encoding"`
+// DecoderArgs are arguments for Encode
+type EncoderArgs struct {
+	Data     string              `json:"data"`
+	Encoding formatting.Encoding `json:"encoding"`
 }
 
-// BuildGenesisReply is the reply from BuildGenesis
-type BuildGenesisReply struct {
+// EncoderReply is the reply from Encoder
+type EncoderReply struct {
 	Bytes    string              `json:"bytes"`
 	Encoding formatting.Encoding `json:"encoding"`
 }
 
-// BuildGenesis returns the encoded genesisData
-func (ss *StaticService) BuildGenesis(_ *http.Request, args *BuildGenesisArgs, reply *BuildGenesisReply) error {
-	bytes, err := formatting.Encode(args.Encoding, []byte(args.GenesisData))
+// Encoder returns the encoded data
+func (ss *StaticService) Encode(_ *http.Request, args *EncoderArgs, reply *EncoderReply) error {
+	bytes, err := formatting.Encode(args.Encoding, []byte(args.Data))
 	if err != nil {
-		return fmt.Errorf("couldn't encode genesis as string: %s", err)
+		return fmt.Errorf("couldn't encode data as string: %s", err)
 	}
 	reply.Bytes = bytes
+	reply.Encoding = args.Encoding
+	return nil
+}
+
+// DecoderArgs are arguments for Decode
+type DecoderArgs struct {
+	Bytes    string              `json:"bytes"`
+	Encoding formatting.Encoding `json:"encoding"`
+}
+
+// DecoderReply is the reply from Decoder
+type DecoderReply struct {
+	Data     string              `json:"data"`
+	Encoding formatting.Encoding `json:"encoding"`
+}
+
+// Decoder returns the Decoded data
+func (ss *StaticService) Decode(_ *http.Request, args *DecoderArgs, reply *DecoderReply) error {
+	bytes, err := formatting.Decode(args.Encoding, args.Bytes)
+	if err != nil {
+		return fmt.Errorf("couldn't Decode data as string: %s", err)
+	}
+	reply.Data = string(bytes)
 	reply.Encoding = args.Encoding
 	return nil
 }
