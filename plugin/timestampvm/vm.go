@@ -165,15 +165,20 @@ func (vm *VM) BuildBlock() (snowman.Block, error) {
 
 	preferredIntf, err := vm.GetBlock(vm.Preferred())
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get preferred block")
+		return nil, fmt.Errorf("couldn't get preferred block: %w", err)
 	}
 	preferredHeight := preferredIntf.(*Block).Height()
 
 	// Build the block
 	block, err := vm.NewBlock(vm.Preferred(), preferredHeight+1, value, time.Now())
 	if err != nil {
+		return nil, fmt.Errorf("couldn't build block: %w", err)
+	}
+
+	if err := block.Verify(); err != nil {
 		return nil, err
 	}
+
 	return block, nil
 }
 
@@ -191,8 +196,14 @@ func (vm *VM) proposeBlock(data [dataLen]byte) {
 func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	block := &Block{}
 	_, err := vm.codec.Unmarshal(bytes, block)
+	if err != nil {
+		return nil, err
+	}
 	block.Initialize(bytes, &vm.SnowmanVM)
-	return block, err
+	if err := block.VM.SaveBlock(block.VM.DB, block); err != nil {
+		return nil, errDatabaseSave
+	}
+	return block, block.VM.DB.Commit()
 }
 
 // NewBlock returns a new Block where:
