@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/hashicorp/go-plugin"
+	log "github.com/inconshreveable/log15"
 
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
 	"github.com/ava-labs/timerpc/plugin/timestampvm"
@@ -25,7 +25,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat())))
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: rpcchainvm.Handshake,
 		Plugins: map[string]plugin.Plugin{

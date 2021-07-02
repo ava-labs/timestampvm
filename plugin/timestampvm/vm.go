@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/gorilla/rpc/v2"
+	log "github.com/inconshreveable/log15"
 
 	"github.com/ava-labs/avalanchego/codec"
 	"github.com/ava-labs/avalanchego/codec/linearcodec"
@@ -62,6 +62,7 @@ func (vm *VM) Initialize(
 	toEngine chan<- common.Message,
 	_ []*common.Fx,
 ) error {
+	log.Info("Initializing TimestampVM")
 	if err := vm.SnowmanVM.Initialize(ctx, dbManager.Current().Database, vm.ParseBlock, toEngine); err != nil {
 		log.Error("error initializing SnowmanVM: %v", err)
 		return err
