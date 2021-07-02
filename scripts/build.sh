@@ -26,5 +26,5 @@ fi
 timerpc_commit=${TIMERPC_COMMIT:-$( git rev-list -1 HEAD )}
 
 # Build Timerpc, which is run as a subprocess
-echo "Building Timerpc Version: $timerpc_version; GitCommit: $timerpc_commit"
+echo "Building TimeRPC Version: $timerpc_version; GitCommit: $timerpc_commit"
 go build -ldflags "-X github.com/ava-labs/timerpc/plugin/timerpc.GitCommit=$timerpc_commit -X github.com/ava-labs/timerpc/plugin/timerpc.Version=$timerpc_version" -o "$binary_path" "plugin/"*.go
