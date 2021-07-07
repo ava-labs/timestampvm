@@ -8,10 +8,14 @@ set -o pipefail
 TIMERPC_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
 
 # Load the versions
-source "$TIMERPC_PATH"/scripts/versions.sh
+avalanche_version=${AVALANCHE_VERSION:-'v1.4.8'}
 
 # Load the constants
-source "$TIMERPC_PATH"/scripts/constants.sh
+# Set the PATHS
+GOPATH="$(go env GOPATH)"
+
+# Set default binary location
+binary_path="$GOPATH/src/github.com/ava-labs/avalanchego/build/avalanchego-latest/plugins/timestampvm"
 
 if [[ $# -eq 1 ]]; then
     binary_path=$1
@@ -26,5 +30,5 @@ fi
 timerpc_commit=${TIMERPC_COMMIT:-$( git rev-list -1 HEAD )}
 
 # Build Timerpc, which is run as a subprocess
-echo "Building TimeRPC Version: $timerpc_version; GitCommit: $timerpc_commit"
-go build -ldflags "-X github.com/ava-labs/timerpc/plugin/timerpc.GitCommit=$timerpc_commit -X github.com/ava-labs/timerpc/plugin/timerpc.Version=$timerpc_version" -o "$binary_path" "plugin/"*.go
+echo "Building TimeRPC; GitCommit: $timerpc_commit"
+go build -ldflags "-X github.com/ava-labs/timerpc/plugin/timerpc.GitCommit=$timerpc_commit" -o "$binary_path" "plugin/"*.go

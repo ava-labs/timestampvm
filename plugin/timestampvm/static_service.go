@@ -18,10 +18,11 @@ func CreateStaticService() *StaticService {
 	return &StaticService{}
 }
 
-// DecoderArgs are arguments for Encode
+// EncoderArgs are arguments for Encode
 type EncoderArgs struct {
 	Data     string              `json:"data"`
 	Encoding formatting.Encoding `json:"encoding"`
+	Length   int32               `json:"length"`
 }
 
 // EncoderReply is the reply from Encoder
@@ -32,7 +33,18 @@ type EncoderReply struct {
 
 // Encoder returns the encoded data
 func (ss *StaticService) Encode(_ *http.Request, args *EncoderArgs, reply *EncoderReply) error {
-	bytes, err := formatting.Encode(args.Encoding, []byte(args.Data))
+	if len(args.Data) == 0 {
+		return fmt.Errorf("argument Data cannot be empty.")
+	}
+	var argBytes []byte
+	if args.Length > 0 {
+		argBytes = make([]byte, args.Length)
+		copy(argBytes[:], []byte(args.Data))
+	} else {
+		argBytes = []byte(args.Data)
+	}
+
+	bytes, err := formatting.Encode(args.Encoding, argBytes)
 	if err != nil {
 		return fmt.Errorf("couldn't encode data as string: %s", err)
 	}
