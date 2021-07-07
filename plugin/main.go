@@ -20,6 +20,7 @@ func main() {
 		fmt.Printf("couldn't get config: %s", err)
 		os.Exit(1)
 	}
+	// Print VM ID and exit
 	if vmID {
 		fmt.Println(timestampvm.ID)
 		os.Exit(0)
