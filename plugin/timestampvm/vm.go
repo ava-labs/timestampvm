@@ -19,9 +19,9 @@ import (
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
-	"github.com/ava-labs/avalanchego/vms/components/core"
-
 	cjson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/version"
+	"github.com/ava-labs/avalanchego/vms/components/core"
 )
 
 const (
@@ -32,9 +32,9 @@ const (
 var (
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
+	Current            = version.NewDefaultVersion(1, 0, 0)
 
-	_ block.ChainVM   = &VM{}
-	_ common.StaticVM = &VM{}
+	_ block.ChainVM = &VM{}
 )
 
 // VM implements the snowman.VM interface
@@ -62,7 +62,12 @@ func (vm *VM) Initialize(
 	toEngine chan<- common.Message,
 	_ []*common.Fx,
 ) error {
-	log.Info("Initializing TimestampVM")
+	version, err := vm.Version()
+	if err != nil {
+		log.Error("error initializing Timestamp VM: %v", err)
+		return err
+	}
+	log.Info("Initializing Timestamp VM", "Version", version)
 	if err := vm.SnowmanVM.Initialize(ctx, dbManager.Current().Database, vm.ParseBlock, toEngine); err != nil {
 		log.Error("error initializing SnowmanVM: %v", err)
 		return err
@@ -232,4 +237,8 @@ func (vm *VM) Connected(id ids.ShortID) error {
 
 func (vm *VM) Disconnected(id ids.ShortID) error {
 	return nil // noop
+}
+
+func (vm *VM) Version() (string, error) {
+	return Current.String(), nil
 }

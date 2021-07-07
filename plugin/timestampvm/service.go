@@ -67,6 +67,8 @@ type GetBlockReply struct {
 // GetBlock gets the block whose ID is [args.ID]
 // If [args.ID] is empty, get the latest block
 func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockReply) error {
+	// If an ID is given, parse its string representation to an ids.ID
+	// If no ID is given, ID becomes the ID of last accepted block
 	var id ids.ID
 	var err error
 	if args.ID == "" {
@@ -81,16 +83,18 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 		}
 	}
 
+	// Get the block from the database
 	blockInterface, err := s.vm.GetBlock(id)
 	if err != nil {
 		return errNoSuchBlock
 	}
 
 	block, ok := blockInterface.(*Block)
-	if !ok {
+	if !ok { // Should never happen but better to check than to panic
 		return errBadData
 	}
 
+	// Fill out the response with the block's data
 	reply.APIBlock.ID = block.ID().String()
 	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp)
 	reply.APIBlock.ParentID = block.ParentID().String()
