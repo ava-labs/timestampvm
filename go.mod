@@ -1,4 +1,4 @@
-module github.com/ava-labs/timerpc
+module github.com/ava-labs/timestampvm
 
 go 1.15
 

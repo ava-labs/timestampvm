@@ -11,7 +11,7 @@ import (
 	log "github.com/inconshreveable/log15"
 
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
-	"github.com/ava-labs/timerpc/plugin/timestampvm"
+	"github.com/ava-labs/timestampvm/timestampvm"
 )
 
 func main() {

@@ -15,7 +15,7 @@ const (
 )
 
 func corethFlagSet() *flag.FlagSet {
-	fs := flag.NewFlagSet("timerpc", flag.ContinueOnError)
+	fs := flag.NewFlagSet("timestampvm", flag.ContinueOnError)
 
 	fs.Bool(vmIDKey, false, "If true, prints vmID and quit")
 

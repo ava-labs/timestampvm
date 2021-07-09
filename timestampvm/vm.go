@@ -32,7 +32,7 @@ const (
 var (
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
-	Current            = version.NewDefaultVersion(1, 0, 0)
+	Version            = version.NewDefaultVersion(1, 0, 0)
 
 	_ block.ChainVM = &VM{}
 )
@@ -240,5 +240,5 @@ func (vm *VM) Disconnected(id ids.ShortID) error {
 }
 
 func (vm *VM) Version() (string, error) {
-	return Current.String(), nil
+	return Version.String(), nil
 }
