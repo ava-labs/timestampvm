@@ -169,22 +169,23 @@ func (vm *VM) BuildBlock() (snowman.Block, error) {
 		defer vm.NotifyBlockReady()
 	}
 
+	// Gets Preferred Block
 	preferredIntf, err := vm.GetBlock(vm.Preferred())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get preferred block: %w", err)
 	}
 	preferredHeight := preferredIntf.(*Block).Height()
 
-	// Build the block
+	// Build the block with preferred height
 	block, err := vm.NewBlock(vm.Preferred(), preferredHeight+1, value, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build block: %w", err)
 	}
 
+	// Verifies block
 	if err := block.Verify(); err != nil {
 		return nil, err
 	}
-
 	return block, nil
 }
 
@@ -199,17 +200,24 @@ func (vm *VM) proposeBlock(data [dataLen]byte) {
 
 // ParseBlock parses [bytes] to a snowman.Block
 // This function is used by the vm's state to unmarshal blocks saved in state
+// and by the consensus layer when it receives the byte representation of a block
+// from another node
 func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
+	// A new empty block
 	block := &Block{}
+
+	// Unmarshal the byte repr. of the block into our empty block
 	_, err := vm.codec.Unmarshal(bytes, block)
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize the block
+	// (Block inherits Initialize from its embedded *core.Block)
 	block.Initialize(bytes, &vm.SnowmanVM)
-	if err := block.VM.SaveBlock(block.VM.DB, block); err != nil {
-		return nil, errDatabaseSave
-	}
-	return block, block.VM.DB.Commit()
+
+	// Return the block
+	return block, nil
 }
 
 // NewBlock returns a new Block where:
@@ -218,17 +226,28 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's timestamp is [timestamp]
 // The block is persisted in storage
 func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
+	// Create our new block
 	block := &Block{
 		Block:     core.NewBlock(parentID, height),
 		Data:      data,
 		Timestamp: timestamp.Unix(),
 	}
+
+	// Get the byte representation of the block
 	blockBytes, err := vm.codec.Marshal(codecVersion, block)
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize the block by providing it with its byte representation
+	// and a reference to SnowmanVM
 	block.Initialize(blockBytes, &vm.SnowmanVM)
 	return block, nil
+}
+
+// Returns this VM's version
+func (vm *VM) Version() (string, error) {
+	return Version.String(), nil
 }
 
 func (vm *VM) Connected(id ids.ShortID) error {
@@ -237,8 +256,4 @@ func (vm *VM) Connected(id ids.ShortID) error {
 
 func (vm *VM) Disconnected(id ids.ShortID) error {
 	return nil // noop
-}
-
-func (vm *VM) Version() (string, error) {
-	return Version.String(), nil
 }

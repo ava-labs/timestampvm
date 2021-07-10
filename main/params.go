@@ -14,7 +14,7 @@ const (
 	vmIDKey = "vmID"
 )
 
-func corethFlagSet() *flag.FlagSet {
+func buildFlagSet() *flag.FlagSet {
 	fs := flag.NewFlagSet("timestampvm", flag.ContinueOnError)
 
 	fs.Bool(vmIDKey, false, "If true, prints vmID and quit")
@@ -26,7 +26,7 @@ func corethFlagSet() *flag.FlagSet {
 func getViper() (*viper.Viper, error) {
 	v := viper.New()
 
-	fs := corethFlagSet()
+	fs := buildFlagSet()
 	pflag.CommandLine.AddGoFlagSet(fs)
 	pflag.Parse()
 	if err := v.BindPFlags(pflag.CommandLine); err != nil {

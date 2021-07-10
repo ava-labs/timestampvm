@@ -21,7 +21,7 @@ fi
 # Check if timestampvm_COMMIT is set, if not retrieve the last commit from the repo.
 # This is used in the Dockerfile to allow a commit hash to be passed in without
 # including the .git/ directory within the Docker image.
-timestampvm_commit=${timestampvm_COMMIT:-$( git rev-list -1 HEAD )}
+timestampvm_commit=${TIMESTAMPVM_COMMIT:-$( git rev-list -1 HEAD )}
 
 # Build timestampvm, which is run as a subprocess
 echo "Building timestampvm; GitCommit: $timestampvm_commit"

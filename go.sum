@@ -32,6 +32,8 @@ github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmV
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
 github.com/ava-labs/avalanchego v1.4.10-0.20210702050943-040fca3df740 h1:WztmpF73G2Wjq6B4sM00e9cDbisU0Cw1CTy4GmRx3CM=
 github.com/ava-labs/avalanchego v1.4.10-0.20210702050943-040fca3df740/go.mod h1:V9qJp9RYUApCmGASsfTlYt+/569tuDX8MrF4j3E+oT8=
+github.com/ava-labs/avalanchego v1.4.10-rc.3 h1:X0kij4Qi/uUwcLl7ZoaQ2+qgMM+mx+VWVEtIWPM2kxE=
+github.com/ava-labs/avalanchego v1.4.10-rc.3/go.mod h1:V9qJp9RYUApCmGASsfTlYt+/569tuDX8MrF4j3E+oT8=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
