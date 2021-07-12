@@ -27,6 +27,7 @@ import (
 const (
 	dataLen      = 32
 	codecVersion = 0
+	VMName       = "timestampvm"
 )
 
 var (
@@ -126,7 +127,7 @@ func (vm *VM) Initialize(
 // Keys: The path extension for this VM's API (empty in this case)
 // Values: The handler for the API
 func (vm *VM) CreateHandlers() (map[string]*common.HTTPHandler, error) {
-	handler, err := vm.NewHandler("timestampvm", &Service{vm})
+	handler, err := vm.NewHandler(VMName, &Service{vm})
 	return map[string]*common.HTTPHandler{
 		"": handler,
 	}, err
@@ -147,7 +148,7 @@ func (vm *VM) CreateStaticHandlers() (map[string]*common.HTTPHandler, error) {
 	staticService := CreateStaticService()
 	return map[string]*common.HTTPHandler{
 		"": {LockOptions: common.WriteLock, Handler: newServer},
-	}, newServer.RegisterService(staticService, "timestampvm")
+	}, newServer.RegisterService(staticService, VMName)
 }
 
 // Health implements the common.VM interface

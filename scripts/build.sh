@@ -8,21 +8,24 @@ set -o pipefail
 # Set the PATHS
 GOPATH="$(go env GOPATH)"
 
-# Set default binary location
-binary_path="$GOPATH/src/github.com/ava-labs/avalanchego/build/avalanchego-latest/plugins/timestampvm"
+# TimestampVM root directory
+TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+
+# Set default binary directory location
+binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/avalanchego-latest/plugins/"
+name="tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
 
 if [[ $# -eq 1 ]]; then
-    binary_path=$1
+    binary_directory=$1
+elif [[ $# -eq 2 ]]; then
+    binary_directory=$1
+    name=$2
 elif [[ $# -ne 0 ]]; then
     echo "Invalid arguments to build timestampvm. Requires either no arguments (default) or one arguments to specify binary location."
     exit 1
 fi
 
-# Check if timestampvm_COMMIT is set, if not retrieve the last commit from the repo.
-# This is used in the Dockerfile to allow a commit hash to be passed in without
-# including the .git/ directory within the Docker image.
-timestampvm_commit=${TIMESTAMPVM_COMMIT:-$( git rev-list -1 HEAD )}
 
 # Build timestampvm, which is run as a subprocess
-echo "Building timestampvm; GitCommit: $timestampvm_commit"
-go build -ldflags "-X github.com/ava-labs/timestampvm/main/timestampvm.GitCommit=$timestampvm_commit" -o "$binary_path" "main/"*.go
+echo "Building timestampvm in $binary_directory/$name"
+go build -o "$binary_directory/$name" "main/"*.go

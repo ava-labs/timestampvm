@@ -15,14 +15,14 @@ import (
 )
 
 func main() {
-	vmID, err := PrintVMID()
+	version, err := PrintVersion()
 	if err != nil {
 		fmt.Printf("couldn't get config: %s", err)
 		os.Exit(1)
 	}
 	// Print VM ID and exit
-	if vmID {
-		fmt.Println(timestampvm.ID)
+	if version {
+		fmt.Printf("%s@%s\n", timestampvm.VMName, timestampvm.Version)
 		os.Exit(0)
 	}
 

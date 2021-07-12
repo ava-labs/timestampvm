@@ -6,18 +6,19 @@ package main
 import (
 	"flag"
 
+	"github.com/ava-labs/timestampvm/timestampvm"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 const (
-	vmIDKey = "vmID"
+	versionKey = "version"
 )
 
 func buildFlagSet() *flag.FlagSet {
-	fs := flag.NewFlagSet("timestampvm", flag.ContinueOnError)
+	fs := flag.NewFlagSet(timestampvm.VMName, flag.ContinueOnError)
 
-	fs.Bool(vmIDKey, false, "If true, prints vmID and quit")
+	fs.Bool(versionKey, false, "If true, prints Version and quit")
 
 	return fs
 }
@@ -36,13 +37,13 @@ func getViper() (*viper.Viper, error) {
 	return v, nil
 }
 
-func PrintVMID() (bool, error) {
+func PrintVersion() (bool, error) {
 	v, err := getViper()
 	if err != nil {
 		return false, err
 	}
 
-	if v.GetBool(vmIDKey) {
+	if v.GetBool(versionKey) {
 		return true, nil
 	}
 	return false, nil

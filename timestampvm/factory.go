@@ -4,15 +4,13 @@
 package timestampvm
 
 import (
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/vms"
 )
 
 // ID is a unique identifier for this VM
 var (
-	ID             = ids.ID{'t', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p'}
-	_  vms.Factory = &Factory{}
+	_ vms.Factory = &Factory{}
 )
 
 // Factory ...
