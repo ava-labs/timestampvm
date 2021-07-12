@@ -16,7 +16,7 @@ const (
 )
 
 func buildFlagSet() *flag.FlagSet {
-	fs := flag.NewFlagSet(timestampvm.VMName, flag.ContinueOnError)
+	fs := flag.NewFlagSet(timestampvm.Name, flag.ContinueOnError)
 
 	fs.Bool(versionKey, false, "If true, prints Version and quit")
 
@@ -43,8 +43,5 @@ func PrintVersion() (bool, error) {
 		return false, err
 	}
 
-	if v.GetBool(versionKey) {
-		return true, nil
-	}
-	return false, nil
+	return v.GetBool(versionKey), nil
 }

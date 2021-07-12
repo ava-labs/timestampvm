@@ -8,10 +8,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms"
 )
 
-// ID is a unique identifier for this VM
-var (
-	_ vms.Factory = &Factory{}
-)
+var _ vms.Factory = &Factory{}
 
 // Factory ...
 type Factory struct{}

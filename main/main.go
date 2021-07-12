@@ -22,7 +22,7 @@ func main() {
 	}
 	// Print VM ID and exit
 	if version {
-		fmt.Printf("%s@%s\n", timestampvm.VMName, timestampvm.Version)
+		fmt.Printf("%s@%s\n", timestampvm.Name, timestampvm.Version)
 		os.Exit(0)
 	}
 
