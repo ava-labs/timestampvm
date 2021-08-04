@@ -47,7 +47,7 @@ func (b *Block) Verify() error {
 	parentID := b.Parent()
 	parentIntf, err := b.VM.GetBlock(parentID)
 	if err != nil {
-		return err
+		return errDatabaseGet
 	}
 	parent, ok := parentIntf.(*Block)
 	if !ok {
