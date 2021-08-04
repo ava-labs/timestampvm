@@ -44,7 +44,7 @@ func (ss *StaticService) Encode(_ *http.Request, args *EncodeArgs, reply *Encode
 		argBytes = []byte(args.Data)
 	}
 
-	bytes, err := formatting.Encode(args.Encoding, argBytes)
+	bytes, err := formatting.EncodeWithChecksum(args.Encoding, argBytes)
 	if err != nil {
 		return fmt.Errorf("couldn't encode data as string: %s", err)
 	}

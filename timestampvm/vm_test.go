@@ -21,8 +21,8 @@ var blockchainID = ids.ID{1, 2, 3}
 // * Data [expectedData]
 // * Verify() returns nil iff passesVerify == true
 func assertBlock(block *Block, parentID ids.ID, expectedData [dataLen]byte, passesVerify bool) error {
-	if block.ParentID() != parentID {
-		return fmt.Errorf("expect parent ID to be %s but was %s", parentID, block.ParentID())
+	if block.Parent() != parentID {
+		return fmt.Errorf("expect parent ID to be %s but was %s", parentID, block.Parent())
 	}
 	if block.Data != expectedData {
 		return fmt.Errorf("expected data to be %v but was %v", expectedData, block.Data)

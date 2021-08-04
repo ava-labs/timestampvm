@@ -34,6 +34,8 @@ github.com/ava-labs/avalanchego v1.4.10-0.20210702050943-040fca3df740 h1:WztmpF7
 github.com/ava-labs/avalanchego v1.4.10-0.20210702050943-040fca3df740/go.mod h1:V9qJp9RYUApCmGASsfTlYt+/569tuDX8MrF4j3E+oT8=
 github.com/ava-labs/avalanchego v1.4.10-rc.3 h1:X0kij4Qi/uUwcLl7ZoaQ2+qgMM+mx+VWVEtIWPM2kxE=
 github.com/ava-labs/avalanchego v1.4.10-rc.3/go.mod h1:V9qJp9RYUApCmGASsfTlYt+/569tuDX8MrF4j3E+oT8=
+github.com/ava-labs/avalanchego v1.4.13-rc.0.0.20210804172153-2ab08c2cfda8 h1:e6N+AynNWowbthQ2yODLzTQXYyGXoFy6vJfmgSUWXP4=
+github.com/ava-labs/avalanchego v1.4.13-rc.0.0.20210804172153-2ab08c2cfda8/go.mod h1:aleAWKvMQ/mblB4dXWWvlbq8787TmwR7+3WizYtogTM=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -101,6 +103,7 @@ github.com/go-stack/stack v1.8.0 h1:5SgMzNM5HxrEjV0ww2lTmX6E2Izsfxas4+YHWRs3Lsk=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
+github.com/golang-jwt/jwt v3.2.1+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0/go.mod h1:E/TSTwGwJL78qG/PmXZO1EjYhfJinVAhrmmHX6Z8B9k=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
