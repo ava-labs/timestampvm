@@ -16,6 +16,7 @@ var (
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errDatabaseSave      = errors.New("error while saving block to the database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
+	errBlockType         = errors.New("unexpected block type")
 
 	_ snowman.Block = &Block{}
 )
@@ -43,9 +44,14 @@ func (b *Block) Verify() error {
 	}
 
 	// Get [b]'s parent
-	parent, ok := b.Parent().(*Block)
-	if !ok {
+	parentID := b.Parent()
+	parentIntf, err := b.VM.GetBlock(parentID)
+	if err != nil {
 		return errDatabaseGet
+	}
+	parent, ok := parentIntf.(*Block)
+	if !ok {
+		return errBlockType
 	}
 
 	// Ensure [b]'s timestamp is after its parent's timestamp.
