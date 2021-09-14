@@ -259,7 +259,7 @@ func (vm *VM) Disconnected(id ids.ShortID) error {
 	return nil // noop
 }
 
-
+// This VM doesn't (currently) have any app-specific messages
 func (vm *VM) AppGossip(nodeID ids.ShortID, msg []byte) error {
 	return nil
 }
