@@ -232,7 +232,6 @@ func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, times
 	block := &Block{
 		Block:     core.NewBlock(parentID, height, timestamp.Unix()),
 		Data:      data,
-		VMTimestamp: timestamp.Unix(),
 	}
 
 	// Get the byte representation of the block
