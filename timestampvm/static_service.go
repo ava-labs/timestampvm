@@ -34,12 +34,12 @@ type EncodeReply struct {
 // Encode returns the encoded data
 func (ss *StaticService) Encode(_ *http.Request, args *EncodeArgs, reply *EncodeReply) error {
 	if len(args.Data) == 0 {
-		return fmt.Errorf("argument Data cannot be empty.")
+		return fmt.Errorf("argument Data cannot be empty")
 	}
 	var argBytes []byte
 	if args.Length > 0 {
 		argBytes = make([]byte, args.Length)
-		copy(argBytes[:], []byte(args.Data))
+		copy(argBytes, args.Data)
 	} else {
 		argBytes = []byte(args.Data)
 	}
