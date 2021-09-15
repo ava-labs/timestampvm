@@ -20,8 +20,8 @@ jobs:
         with:
           version: latest
 
-  test:
-    name: Run tests
+  build-test:
+    name: Build & Test
     runs-on: "ubuntu-18.04"
     needs: lint
     steps:
@@ -29,7 +29,6 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: "1.16.8"
-      - run: go test -race -timeout="3m" ./...
-
-      - name: Build
-        run: go build -v ./...
+      - name: build_test
+        shell: bash
+        run: .github/workflows/build_and_test.sh

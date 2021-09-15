@@ -12,7 +12,7 @@ GOPATH="$(go env GOPATH)"
 TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
 
 # Set default binary directory location
-binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/avalanchego-latest/plugins/"
+binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/avalanchego-latest/plugins"
 name="tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
 
 if [[ $# -eq 1 ]]; then
