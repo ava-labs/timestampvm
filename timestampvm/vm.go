@@ -230,8 +230,8 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
 	// Create our new block
 	block := &Block{
-		Block:     core.NewBlock(parentID, height, timestamp.Unix()),
-		Data:      data,
+		Block: core.NewBlock(parentID, height, timestamp.Unix()),
+		Data:  data,
 	}
 
 	// Get the byte representation of the block
@@ -278,4 +278,3 @@ func (vm *VM) AppResponse(nodeID ids.ShortID, requestID uint32, response []byte)
 func (vm *VM) AppRequestFailed(nodeID ids.ShortID, requestID uint32) error {
 	return nil
 }
-
