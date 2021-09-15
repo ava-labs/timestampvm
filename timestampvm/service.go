@@ -96,7 +96,7 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 
 	// Fill out the response with the block's data
 	reply.APIBlock.ID = block.ID().String()
-	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp)
+	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp().Unix())
 	reply.APIBlock.ParentID = block.Parent().String()
 	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, block.Data[:])
 

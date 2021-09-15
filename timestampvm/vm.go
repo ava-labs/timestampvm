@@ -62,6 +62,7 @@ func (vm *VM) Initialize(
 	configData []byte,
 	toEngine chan<- common.Message,
 	_ []*common.Fx,
+	_ common.AppSender,
 ) error {
 	version, err := vm.Version()
 	if err != nil {
@@ -229,9 +230,8 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
 	// Create our new block
 	block := &Block{
-		Block:     core.NewBlock(parentID, height),
+		Block:     core.NewBlock(parentID, height, timestamp.Unix()),
 		Data:      data,
-		Timestamp: timestamp.Unix(),
 	}
 
 	// Get the byte representation of the block
@@ -258,3 +258,24 @@ func (vm *VM) Connected(id ids.ShortID) error {
 func (vm *VM) Disconnected(id ids.ShortID) error {
 	return nil // noop
 }
+
+// This VM doesn't (currently) have any app-specific messages
+func (vm *VM) AppGossip(nodeID ids.ShortID, msg []byte) error {
+	return nil
+}
+
+// This VM doesn't (currently) have any app-specific messages
+func (vm *VM) AppRequest(nodeID ids.ShortID, requestID uint32, request []byte) error {
+	return nil
+}
+
+// This VM doesn't (currently) have any app-specific messages
+func (vm *VM) AppResponse(nodeID ids.ShortID, requestID uint32, response []byte) error {
+	return nil
+}
+
+// This VM doesn't (currently) have any app-specific messages
+func (vm *VM) AppRequestFailed(nodeID ids.ShortID, requestID uint32) error {
+	return nil
+}
+

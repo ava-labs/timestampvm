@@ -28,7 +28,6 @@ var (
 type Block struct {
 	*core.Block `serialize:"true"`
 	Data        [dataLen]byte `serialize:"true"`
-	Timestamp   int64         `serialize:"true"`
 }
 
 // Verify returns nil iff this block is valid.
@@ -55,13 +54,13 @@ func (b *Block) Verify() error {
 	}
 
 	// Ensure [b]'s timestamp is after its parent's timestamp.
-	if b.Timestamp < time.Unix(parent.Timestamp, 0).Unix() {
+	if b.Timestamp().Unix() < parent.Timestamp().Unix() {
 		return errTimestampTooEarly
 	}
 
 	// Ensure [b]'s timestamp is not more than an hour
 	// ahead of this node's time
-	if b.Timestamp >= time.Now().Add(time.Hour).Unix() {
+	if b.Timestamp().Unix() >= time.Now().Add(time.Hour).Unix() {
 		return errTimestampTooLate
 	}
 
