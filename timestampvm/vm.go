@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/rpc/v2"
+
 	log "github.com/inconshreveable/log15"
 
 	"github.com/ava-labs/avalanchego/codec"
@@ -19,21 +20,24 @@ import (
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
-	cjson "github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/components/core"
+
+	cjson "github.com/ava-labs/avalanchego/utils/json"
 )
 
 const (
+	Name = "timestampvm"
+
 	dataLen      = 32
 	codecVersion = 0
-	Name         = "timestampvm"
 )
 
 var (
+	Version = version.NewDefaultVersion(1, 1, 2)
+
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
-	Version            = version.NewDefaultVersion(1, 0, 0)
 
 	_ block.ChainVM = &VM{}
 )
