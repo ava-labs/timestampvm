@@ -20,12 +20,12 @@ var blockchainID = ids.ID{1, 2, 3}
 // * Parent with ID [parentID]
 // * Data [expectedData]
 // * Verify() returns nil iff passesVerify == true
-func assertBlock(block *Block, parentID ids.ID, expectedData [dataLen]byte, passesVerify bool) error {
+func assertBlock(block Block, parentID ids.ID, expectedData [dataLen]byte, passesVerify bool) error {
 	if block.Parent() != parentID {
 		return fmt.Errorf("expect parent ID to be %s but was %s", parentID, block.Parent())
 	}
-	if block.Data != expectedData {
-		return fmt.Errorf("expected data to be %v but was %v", expectedData, block.Data)
+	if block.Data() != expectedData {
+		return fmt.Errorf("expected data to be %v but was %v", expectedData, block.Data())
 	}
 	if block.Verify() != nil && passesVerify {
 		return fmt.Errorf("expected block to pass verification but it fails")
@@ -50,7 +50,7 @@ func TestGenesis(t *testing.T) {
 	}
 
 	// Verify that the db is initialized
-	if !vm.DBInitialized() {
+	if ok, err := vm.state.IsInitialized(); err != nil || !ok {
 		t.Fatal("db should be initialized")
 	}
 
@@ -69,7 +69,8 @@ func TestGenesis(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't get genesisBlock: %s", err)
 	}
-	genesisBlock, ok := genesisSnowmanBlock.(*Block) // type assert that genesisBlock is a *Block
+
+	genesisBlock, ok := genesisSnowmanBlock.(*TimeBlock) // type assert that genesisBlock is a *Block
 	if !ok {
 		t.Fatal("type of genesisBlock should be *Block")
 	}
@@ -142,7 +143,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block2, ok := snowmanBlock2.(*Block)
+	block2, ok := snowmanBlock2.(*TimeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}
@@ -189,7 +190,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block3, ok := snowmanBlock3.(*Block)
+	block3, ok := snowmanBlock3.(*TimeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}

@@ -5,7 +5,6 @@ package timestampvm
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -72,10 +71,7 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	var id ids.ID
 	var err error
 	if args.ID == "" {
-		id, err = s.vm.LastAccepted()
-		if err != nil {
-			return fmt.Errorf("problem finding the last accepted ID: %s", err)
-		}
+		id = s.vm.state.GetLastAccepted()
 	} else {
 		id, err = ids.FromString(args.ID)
 		if err != nil {
@@ -89,7 +85,7 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 		return errNoSuchBlock
 	}
 
-	block, ok := blockInterface.(*Block)
+	block, ok := blockInterface.(*TimeBlock)
 	if !ok { // Should never happen but better to check than to panic
 		return errBadData
 	}
@@ -98,7 +94,8 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	reply.APIBlock.ID = block.ID().String()
 	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp().Unix())
 	reply.APIBlock.ParentID = block.Parent().String()
-	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, block.Data[:])
+	data := block.Data()
+	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, data[:])
 
 	return err
 }
