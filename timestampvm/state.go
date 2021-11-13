@@ -32,14 +32,14 @@ type state struct {
 	baseDB *versiondb.Database
 }
 
-func NewState(db database.Database) State {
+func NewState(db database.Database, vm *VM) State {
 	baseDB := versiondb.New(db)
 
 	blockDB := prefixdb.New(blockStatePrefix, baseDB)
 	singletonDB := prefixdb.New(singletonStatePrefix, baseDB)
 
 	return &state{
-		BlockState:     NewBlockState(blockDB),
+		BlockState:     NewBlockState(blockDB, vm),
 		SingletonState: avax.NewSingletonState(singletonDB),
 		baseDB:         baseDB,
 	}

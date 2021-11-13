@@ -4,22 +4,17 @@
 package timestampvm
 
 import (
-	"errors"
-
 	"github.com/ava-labs/avalanchego/cache"
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/snow/choices"
 )
 
 const (
 	blockCacheSize = 8192
 )
 
-var (
-	errBlockWrongVersion = errors.New("wrong version")
-
-	_ BlockState = &blockState{}
-)
+var _ BlockState = &blockState{}
 
 type BlockState interface {
 	GetBlock(blkID ids.ID) (Block, error)
@@ -34,14 +29,21 @@ type BlockState interface {
 type blockState struct {
 	blkCache cache.Cacher
 	blockDB  database.Database
+	vm       *VM
 
 	lastAccepted ids.ID
 }
 
-func NewBlockState(db database.Database) BlockState {
+type blkWrapper struct {
+	Blk    []byte         `serialize:"true"`
+	Status choices.Status `serialize:"true"`
+}
+
+func NewBlockState(db database.Database, vm *VM) BlockState {
 	return &blockState{
 		blkCache: &cache.LRU{Size: blockCacheSize},
 		blockDB:  db,
+		vm:       vm,
 	}
 }
 
@@ -51,23 +53,29 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 		return nil, err
 	}
 
-	blk := TimeBlock{}
-	parsedVersion, err := Codec.Unmarshal(blkBytes, &blk)
-	if err != nil {
+	blkWrapper := blkWrapper{}
+	if _, err := Codec.Unmarshal(blkBytes, &blkWrapper); err != nil {
 		return nil, err
 	}
 
-	if parsedVersion != codecVersion {
-		return nil, errBlockWrongVersion
+	var blk Block
+	if _, err := Codec.Unmarshal(blkWrapper.Blk, &blk); err != nil {
+		return nil, err
 	}
+
+	blk.Initialize(blkWrapper.Blk, blkWrapper.Status, s.vm)
 
 	s.blkCache.Put(blkID, blk)
 
-	return &blk, nil
+	return blk, nil
 }
 
 func (s *blockState) PutBlock(blk Block) error {
-	bytes, err := Codec.Marshal(codecVersion, &blk)
+	blkWrapper := blkWrapper{
+		Blk:    blk.Bytes(),
+		Status: blk.Status(),
+	}
+	bytes, err := Codec.Marshal(codecVersion, &blkWrapper)
 	if err != nil {
 		return err
 	}

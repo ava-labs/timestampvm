@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/snow/choices"
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
@@ -84,7 +85,7 @@ func (vm *VM) Initialize(
 	vm.toEngine = toEngine
 	vm.currentBlocks = make(map[ids.ID]Block)
 
-	vm.state = NewState(vm.dbManager.Current().Database)
+	vm.state = NewState(vm.dbManager.Current().Database, vm)
 
 	if err := vm.initGenesis(genesisData); err != nil {
 		return err
@@ -239,6 +240,7 @@ func (vm *VM) getBlock(blkID ids.ID) (Block, error) {
 	if blk, exists := vm.currentBlocks[blkID]; exists {
 		return blk, nil
 	}
+
 	return vm.state.GetBlock(blkID)
 }
 
@@ -270,7 +272,7 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 
 	// Initialize the block
 	// (Block inherits Initialize from its embedded *core.Block)
-	block.Initialize(bytes, vm)
+	block.Initialize(bytes, choices.Processing, vm)
 
 	// Return the block
 	return block, nil
@@ -291,7 +293,7 @@ func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, times
 
 	// Initialize the block by providing it with its byte representation
 	// and a reference to this VM
-	block.Initialize(blockBytes, vm)
+	block.Initialize(blockBytes, choices.Processing, vm)
 	return block, nil
 }
 

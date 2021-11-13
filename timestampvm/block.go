@@ -24,7 +24,7 @@ var (
 
 type Block interface {
 	snowman.Block
-	Initialize(bytes []byte, vm *VM)
+	Initialize(bytes []byte, status choices.Status, vm *VM)
 	Data() [dataLen]byte
 }
 
@@ -78,11 +78,11 @@ func (b *TimeBlock) Verify() error {
 // Initialize sets [b.bytes] to [bytes], sets [b.id] to hash([b.bytes])
 // Checks if [b]'s status is already stored in state. If so, [b] gets that status.
 // Otherwise [b]'s status is Unknown.
-func (b *TimeBlock) Initialize(bytes []byte, vm *VM) {
+func (b *TimeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
 	b.vm = vm
 	b.bytes = bytes
 	b.id = hashing.ComputeHash256Array(b.bytes)
-	b.status = choices.Unknown // don't set status until it is queried
+	b.status = status
 }
 
 // Accept sets this block's status to Accepted and sets lastAccepted to this
