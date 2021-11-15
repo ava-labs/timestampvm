@@ -27,10 +27,11 @@ func assertBlock(block Block, parentID ids.ID, expectedData [dataLen]byte, passe
 	if block.Data() != expectedData {
 		return fmt.Errorf("expected data to be %v but was %v", expectedData, block.Data())
 	}
-	if block.Verify() != nil && passesVerify {
-		return fmt.Errorf("expected block to pass verification but it fails")
+	err := block.Verify()
+	if err != nil && passesVerify {
+		return fmt.Errorf("expected block to pass verification but it fails: %w", err)
 	}
-	if block.Verify() == nil && !passesVerify {
+	if err == nil && !passesVerify {
 		return fmt.Errorf("expected block to fail verification but it passes")
 	}
 	return nil
@@ -70,7 +71,7 @@ func TestGenesis(t *testing.T) {
 		t.Fatalf("couldn't get genesisBlock: %s", err)
 	}
 
-	genesisBlock, ok := genesisSnowmanBlock.(*TimeBlock) // type assert that genesisBlock is a *Block
+	genesisBlock, ok := genesisSnowmanBlock.(*timeBlock) // type assert that genesisBlock is a *Block
 	if !ok {
 		t.Fatal("type of genesisBlock should be *Block")
 	}
@@ -143,7 +144,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block2, ok := snowmanBlock2.(*TimeBlock)
+	block2, ok := snowmanBlock2.(*timeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}
@@ -190,7 +191,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block3, ok := snowmanBlock3.(*TimeBlock)
+	block3, ok := snowmanBlock3.(*timeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}

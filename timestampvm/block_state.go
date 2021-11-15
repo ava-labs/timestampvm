@@ -37,6 +37,8 @@ type blockState struct {
 type blkWrapper struct {
 	Blk    []byte         `serialize:"true"`
 	Status choices.Status `serialize:"true"`
+
+	block Block
 }
 
 func NewBlockState(db database.Database, vm *VM) BlockState {
@@ -53,29 +55,31 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 		return nil, err
 	}
 
-	blkWrapper := blkWrapper{}
-	if _, err := Codec.Unmarshal(blkBytes, &blkWrapper); err != nil {
+	blkw := blkWrapper{}
+	if _, err := Codec.Unmarshal(blkBytes, &blkw); err != nil {
 		return nil, err
 	}
 
-	var blk Block
-	if _, err := Codec.Unmarshal(blkWrapper.Blk, &blk); err != nil {
+	blk := timeBlock{}
+	if _, err := Codec.Unmarshal(blkw.Blk, &blk); err != nil {
 		return nil, err
 	}
 
-	blk.Initialize(blkWrapper.Blk, blkWrapper.Status, s.vm)
+	blk.Initialize(blkw.Blk, blkw.Status, s.vm)
 
 	s.blkCache.Put(blkID, blk)
 
-	return blk, nil
+	return &blk, nil
 }
 
 func (s *blockState) PutBlock(blk Block) error {
-	blkWrapper := blkWrapper{
+	blkw := blkWrapper{
 		Blk:    blk.Bytes(),
 		Status: blk.Status(),
+		block:  blk,
 	}
-	bytes, err := Codec.Marshal(codecVersion, &blkWrapper)
+
+	bytes, err := Codec.Marshal(codecVersion, &blkw)
 	if err != nil {
 		return err
 	}

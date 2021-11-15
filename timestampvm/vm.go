@@ -23,9 +23,8 @@ import (
 )
 
 const (
-	dataLen      = 32
-	codecVersion = 0
-	Name         = "timestampvm"
+	dataLen = 32
+	Name    = "timestampvm"
 )
 
 var (
@@ -262,7 +261,7 @@ func (vm *VM) proposeBlock(data [dataLen]byte) {
 // from another node
 func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	// A new empty block
-	block := &TimeBlock{}
+	block := &timeBlock{}
 
 	// Unmarshal the byte repr. of the block into our empty block
 	_, err := Codec.Unmarshal(bytes, block)

@@ -11,7 +11,7 @@ import (
 
 const (
 	// CodecVersion is the current default codec version
-	CodecVersion = 0
+	codecVersion = 0
 )
 
 // Codecs do serialization and deserialization
@@ -26,11 +26,7 @@ func init() {
 	errs := wrappers.Errs{}
 
 	errs.Add(
-		c.RegisterType(&TimeBlock{}),
-	)
-
-	errs.Add(
-		Codec.RegisterCodec(CodecVersion, c),
+		Codec.RegisterCodec(codecVersion, c),
 	)
 	if errs.Errored() {
 		panic(errs.Err)
