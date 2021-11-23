@@ -284,7 +284,6 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	}
 
 	// Initialize the block
-	// (Block inherits Initialize from its embedded *core.Block)
 	block.Initialize(bytes, choices.Processing, vm)
 
 	// Return the block
