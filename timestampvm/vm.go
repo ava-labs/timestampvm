@@ -261,7 +261,7 @@ func (vm *VM) proposeBlock(data [dataLen]byte) {
 // from another node
 func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	// A new empty block
-	block := &timeBlock{}
+	block := &TimeBlock{}
 
 	// Unmarshal the byte repr. of the block into our empty block
 	_, err := Codec.Unmarshal(bytes, block)

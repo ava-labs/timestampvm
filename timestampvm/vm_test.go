@@ -71,7 +71,7 @@ func TestGenesis(t *testing.T) {
 		t.Fatalf("couldn't get genesisBlock: %s", err)
 	}
 
-	genesisBlock, ok := genesisSnowmanBlock.(*timeBlock) // type assert that genesisBlock is a *Block
+	genesisBlock, ok := genesisSnowmanBlock.(*TimeBlock) // type assert that genesisBlock is a *Block
 	if !ok {
 		t.Fatal("type of genesisBlock should be *Block")
 	}
@@ -144,7 +144,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block2, ok := snowmanBlock2.(*timeBlock)
+	block2, ok := snowmanBlock2.(*TimeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}
@@ -191,7 +191,7 @@ func TestHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't get block")
 	}
-	block3, ok := snowmanBlock3.(*timeBlock)
+	block3, ok := snowmanBlock3.(*TimeBlock)
 	if !ok {
 		t.Fatal("genesis block should be type *Block")
 	}

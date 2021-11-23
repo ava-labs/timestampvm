@@ -85,7 +85,7 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 		return errNoSuchBlock
 	}
 
-	block, ok := blockInterface.(*timeBlock)
+	block, ok := blockInterface.(*TimeBlock)
 	if !ok { // Should never happen but better to check than to panic
 		return errBadData
 	}

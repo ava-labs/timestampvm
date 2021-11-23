@@ -19,7 +19,7 @@ var (
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
 	errBlockType         = errors.New("unexpected block type")
 
-	_ Block = &timeBlock{}
+	_ Block = &TimeBlock{}
 )
 
 type Block interface {
@@ -32,7 +32,7 @@ type Block interface {
 // Each block contains:
 // 1) A piece of data (a string)
 // 2) A timestamp
-type timeBlock struct {
+type TimeBlock struct {
 	PrntID ids.ID        `serialize:"true" json:"parentID"`  // parent's ID
 	Hght   uint64        `serialize:"true" json:"height"`    // This block's height. The genesis block is at height 0.
 	Tmstmp int64         `serialize:"true" json:"timestamp"` // Time this block was proposed at
@@ -47,7 +47,7 @@ type timeBlock struct {
 // Verify returns nil iff this block is valid.
 // To be valid, it must be that:
 // b.parent.Timestamp < b.Timestamp <= [local time] + 1 hour
-func (b *timeBlock) Verify() error {
+func (b *TimeBlock) Verify() error {
 	if b.Status() == choices.Accepted {
 		return nil
 	}
@@ -58,7 +58,7 @@ func (b *timeBlock) Verify() error {
 	if err != nil {
 		return errDatabaseGet
 	}
-	parent, ok := parentIntf.(*timeBlock)
+	parent, ok := parentIntf.(*TimeBlock)
 	if !ok {
 		return errBlockType
 	}
@@ -82,7 +82,7 @@ func (b *timeBlock) Verify() error {
 // Initialize sets [b.bytes] to [bytes], sets [b.id] to hash([b.bytes])
 // Checks if [b]'s status is already stored in state. If so, [b] gets that status.
 // Otherwise [b]'s status is Unknown.
-func (b *timeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
+func (b *TimeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
 	b.vm = vm
 	b.bytes = bytes
 	b.id = hashing.ComputeHash256Array(b.bytes)
@@ -91,7 +91,7 @@ func (b *timeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
 
 // Accept sets this block's status to Accepted and sets lastAccepted to this
 // block's ID and saves this info to b.vm.DB
-func (b *timeBlock) Accept() error {
+func (b *TimeBlock) Accept() error {
 	b.SetStatus(choices.Accepted) // Change state of this block
 	blkID := b.ID()
 
@@ -106,7 +106,7 @@ func (b *timeBlock) Accept() error {
 
 // Reject sets this block's status to Rejected and saves the status in state
 // Recall that b.vm.DB.Commit() must be called to persist to the DB
-func (b *timeBlock) Reject() error {
+func (b *TimeBlock) Reject() error {
 	b.SetStatus(choices.Rejected)
 	if err := b.vm.state.PutBlock(b); err != nil {
 		return err
@@ -115,32 +115,32 @@ func (b *timeBlock) Reject() error {
 }
 
 // ID returns the ID of this block
-func (b *timeBlock) ID() ids.ID { return b.id }
+func (b *TimeBlock) ID() ids.ID { return b.id }
 
 // ParentID returns [b]'s parent's ID
-func (b *timeBlock) Parent() ids.ID { return b.PrntID }
+func (b *TimeBlock) Parent() ids.ID { return b.PrntID }
 
 // Height returns this block's height. The genesis block has height 0.
-func (b *timeBlock) Height() uint64 { return b.Hght }
+func (b *TimeBlock) Height() uint64 { return b.Hght }
 
 // Timestamp returns this block's time. The genesis block has time 0.
-func (b *timeBlock) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
+func (b *TimeBlock) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
 
 // Status returns the status of this block
-func (b *timeBlock) Status() choices.Status { return b.status }
+func (b *TimeBlock) Status() choices.Status { return b.status }
 
 // Bytes returns the byte repr. of this block
-func (b *timeBlock) Bytes() []byte { return b.bytes }
+func (b *TimeBlock) Bytes() []byte { return b.bytes }
 
 // Data returns the data of this block
-func (b *timeBlock) Data() [dataLen]byte { return b.Dt }
+func (b *TimeBlock) Data() [dataLen]byte { return b.Dt }
 
 // SetStatus sets the status of this block
-func (b *timeBlock) SetStatus(status choices.Status) { b.status = status }
+func (b *TimeBlock) SetStatus(status choices.Status) { b.status = status }
 
-func newTimeBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) *timeBlock {
+func newTimeBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) *TimeBlock {
 	// Create our new block
-	return &timeBlock{
+	return &TimeBlock{
 		PrntID: parentID,
 		Hght:   height,
 		Tmstmp: timestamp.Unix(),

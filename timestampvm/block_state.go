@@ -60,7 +60,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 		return nil, err
 	}
 
-	blk := timeBlock{}
+	blk := TimeBlock{}
 	if _, err := Codec.Unmarshal(blkw.Blk, &blk); err != nil {
 		return nil, err
 	}
