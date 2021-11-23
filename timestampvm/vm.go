@@ -128,6 +128,11 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return err
 	}
 
+	if err := vm.state.PutBlock(genesisBlock); err != nil {
+		log.Error("error while saving genesis block: %v", err)
+		return err
+	}
+
 	// Accept the genesis block
 	// Sets [vm.lastAccepted] and [vm.preferred]
 	if err := genesisBlock.Accept(); err != nil {
@@ -136,15 +141,6 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 
 	if err := vm.state.SetInitialized(); err != nil {
 		return fmt.Errorf("error while setting db to initialized: %w", err)
-	}
-
-	if err := vm.state.PutBlock(genesisBlock); err != nil {
-		log.Error("error while saving genesis block: %v", err)
-		return err
-	}
-
-	if err := vm.state.SetLastAccepted(genesisBlock.ID()); err != nil {
-		return err
 	}
 
 	// Flush VM's database to underlying db
