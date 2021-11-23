@@ -23,6 +23,7 @@ var (
 	_ Block = &TimeBlock{}
 )
 
+// Block interface is a wrapper around snowman.Block
 type Block interface {
 	snowman.Block
 	Initialize(bytes []byte, status choices.Status, vm *VM)
@@ -31,18 +32,20 @@ type Block interface {
 
 // Block is a block on the chain.
 // Each block contains:
-// 1) A piece of data (a string)
-// 2) A timestamp
+// 1) ParentID
+// 2) Height
+// 3) Timestamp
+// 4) A piece of data (a string)
 type TimeBlock struct {
 	PrntID ids.ID        `serialize:"true" json:"parentID"`  // parent's ID
 	Hght   uint64        `serialize:"true" json:"height"`    // This block's height. The genesis block is at height 0.
 	Tmstmp int64         `serialize:"true" json:"timestamp"` // Time this block was proposed at
 	Dt     [dataLen]byte `serialize:"true" json:"data"`      // Arbitrary data
 
-	id     ids.ID
-	bytes  []byte
-	status choices.Status
-	vm     *VM
+	id     ids.ID         // hold this block's ID
+	bytes  []byte         // this block's encoded bytes
+	status choices.Status // block's status
+	vm     *VM            // the underlying VM reference, mostly used for state
 }
 
 // Verify returns nil iff this block is valid.
@@ -60,6 +63,7 @@ func (b *TimeBlock) Verify() error {
 		return errDatabaseGet
 	}
 
+	// Ensure [b]'s height comes right after its parent's height
 	if expectedHeight := parent.Height() + 1; expectedHeight != b.Hght {
 		return fmt.Errorf(
 			"expected block to have height %d, but found %d",
@@ -79,19 +83,19 @@ func (b *TimeBlock) Verify() error {
 		return errTimestampTooLate
 	}
 
+	// Put that block to verified blocks in memory
 	b.vm.verifiedBlocks[b.id] = b
 
 	return nil
 }
 
-// Initialize sets [b.bytes] to [bytes], sets [b.id] to hash([b.bytes])
-// Checks if [b]'s status is already stored in state. If so, [b] gets that status.
-// Otherwise [b]'s status is Unknown.
+// Initialize sets [b.bytes] to [bytes], [b.id] to hash([b.bytes]),
+// [b.status] to [status] and [b.vm] to [vm]
 func (b *TimeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
-	b.vm = vm
 	b.bytes = bytes
 	b.id = hashing.ComputeHash256Array(b.bytes)
 	b.status = status
+	b.vm = vm
 }
 
 // Accept sets this block's status to Accepted and sets lastAccepted to this
@@ -105,22 +109,28 @@ func (b *TimeBlock) Accept() error {
 		return err
 	}
 
+	// Set last accepted ID to this block ID
 	if err := b.vm.state.SetLastAccepted(blkID); err != nil {
 		return err
 	}
 
+	// Delete this block from verified blocks as it's accepted
 	delete(b.vm.verifiedBlocks, b.ID())
+
+	// Commit changes to database
 	return b.vm.state.Commit()
 }
 
 // Reject sets this block's status to Rejected and saves the status in state
 // Recall that b.vm.DB.Commit() must be called to persist to the DB
 func (b *TimeBlock) Reject() error {
-	b.SetStatus(choices.Rejected)
+	b.SetStatus(choices.Rejected) // Change state of this block
 	if err := b.vm.state.PutBlock(b); err != nil {
 		return err
 	}
+	// Delete this block from verified blocks as it's rejected
 	delete(b.vm.verifiedBlocks, b.ID())
+	// Commit changes to database
 	return b.vm.state.Commit()
 }
 
@@ -149,7 +159,7 @@ func (b *TimeBlock) Data() [dataLen]byte { return b.Dt }
 func (b *TimeBlock) SetStatus(status choices.Status) { b.status = status }
 
 func newTimeBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) *TimeBlock {
-	// Create our new block
+	// Create our new time block
 	return &TimeBlock{
 		PrntID: parentID,
 		Hght:   height,

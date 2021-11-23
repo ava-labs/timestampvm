@@ -55,7 +55,9 @@ type VM struct {
 	// Proposed pieces of data that haven't been put into a block and proposed yet
 	mempool [][dataLen]byte
 
-	// Pins verified blocks to memory
+	// Block ID --> Block
+	// Each element is a block that passed verification but
+	// hasn't yet been accepted/rejected
 	verifiedBlocks map[ids.ID]Block
 }
 
@@ -87,11 +89,15 @@ func (vm *VM) Initialize(
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]Block)
 
+	// Create new state
 	vm.state = NewState(vm.dbManager.Current().Database, vm)
 
+	// Initialize genesis
 	if err := vm.initGenesis(genesisData); err != nil {
 		return err
 	}
+
+	// Get last accepted
 	lastAccepted, err := vm.state.GetLastAccepted()
 	if err != nil {
 		return err
@@ -103,13 +109,14 @@ func (vm *VM) Initialize(
 	return vm.SetPreference(lastAccepted)
 }
 
-// SetDBInitialized marks the database as initialized
+// Initializes Genesis if required
 func (vm *VM) initGenesis(genesisData []byte) error {
 	stateInitialized, err := vm.state.IsInitialized()
 	if err != nil {
 		return err
 	}
 
+	// if state is already initialized, skip init genesis.
 	if stateInitialized {
 		return nil
 	}
@@ -131,6 +138,7 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return err
 	}
 
+	// Put genesis block to state
 	if err := vm.state.PutBlock(genesisBlock); err != nil {
 		log.Error("error while saving genesis block: %v", err)
 		return err
@@ -142,6 +150,7 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return fmt.Errorf("error accepting genesis block: %w", err)
 	}
 
+	// Mark this vm's state as initialized, so we can skip initGenesis in further restarts
 	if err := vm.state.SetInitialized(); err != nil {
 		return fmt.Errorf("error while setting db to initialized: %w", err)
 	}

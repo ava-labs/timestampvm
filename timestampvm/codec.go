@@ -19,9 +19,11 @@ var (
 )
 
 func init() {
+	// Create default codec and manager
 	c := linearcodec.NewDefault()
 	Codec = codec.NewDefaultManager()
 
+	// Register codec to manager with CodecVersion
 	if err := Codec.RegisterCodec(CodecVersion, c); err != nil {
 		panic(err)
 	}
