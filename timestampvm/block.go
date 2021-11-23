@@ -5,6 +5,7 @@ package timestampvm
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -18,6 +19,7 @@ var (
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
 	errBlockType         = errors.New("unexpected block type")
+	errBlockNil          = errors.New("block is nil")
 
 	_ Block = &TimeBlock{}
 )
@@ -48,6 +50,10 @@ type TimeBlock struct {
 // To be valid, it must be that:
 // b.parent.Timestamp < b.Timestamp <= [local time] + 1 hour
 func (b *TimeBlock) Verify() error {
+	if b == nil {
+		return errBlockNil
+	}
+
 	if b.Status() == choices.Accepted {
 		return nil
 	}
@@ -61,6 +67,13 @@ func (b *TimeBlock) Verify() error {
 	parent, ok := parentIntf.(*TimeBlock)
 	if !ok {
 		return errBlockType
+	}
+	if expectedHeight := parent.Height() + 1; expectedHeight != b.Hght {
+		return fmt.Errorf(
+			"expected block to have height %d, but found %d",
+			expectedHeight,
+			b.Hght,
+		)
 	}
 
 	// Ensure [b]'s timestamp is after its parent's timestamp.
