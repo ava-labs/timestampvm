@@ -77,7 +77,7 @@ func TestGenesis(t *testing.T) {
 	}
 
 	// Verify that the genesis block has the data we expect
-	if err := assertBlock(genesisBlock, ids.Empty, ids.ID{0, 0, 0, 0, 0}, true); err != nil {
+	if err := assertBlock(genesisBlock, ids.Empty, ids.ID{0, 0, 0, 0, 0}, false); err != nil {
 		t.Fatal(err)
 	}
 }

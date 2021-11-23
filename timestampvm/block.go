@@ -54,10 +54,6 @@ func (b *TimeBlock) Verify() error {
 		return errBlockNil
 	}
 
-	if b.Status() == choices.Accepted {
-		return nil
-	}
-
 	// Get [b]'s parent
 	parentID := b.Parent()
 	parentIntf, err := b.vm.GetBlock(parentID)
@@ -68,6 +64,7 @@ func (b *TimeBlock) Verify() error {
 	if !ok {
 		return errBlockType
 	}
+
 	if expectedHeight := parent.Height() + 1; expectedHeight != b.Hght {
 		return fmt.Errorf(
 			"expected block to have height %d, but found %d",
