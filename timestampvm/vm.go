@@ -30,7 +30,7 @@ const (
 var (
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
-	Version            = version.NewDefaultVersion(1, 0, 0)
+	Version            = version.NewDefaultVersion(1, 1, 2)
 
 	_ block.ChainVM = &VM{}
 )
@@ -43,6 +43,7 @@ type VM struct {
 	ctx       *snow.Context
 	dbManager manager.Manager
 
+	// State of this VM
 	state State
 
 	// ID of the preferred block
@@ -52,8 +53,10 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool       [][dataLen]byte
-	currentBlocks map[ids.ID]Block
+	mempool [][dataLen]byte
+
+	// Pins verified blocks to memory
+	verifiedBlocks map[ids.ID]Block
 }
 
 // Initialize this vm
@@ -82,7 +85,7 @@ func (vm *VM) Initialize(
 	vm.dbManager = dbManager
 	vm.ctx = ctx
 	vm.toEngine = toEngine
-	vm.currentBlocks = make(map[ids.ID]Block)
+	vm.verifiedBlocks = make(map[ids.ID]Block)
 
 	vm.state = NewState(vm.dbManager.Current().Database, vm)
 
@@ -238,7 +241,7 @@ func (vm *VM) GetBlock(blkID ids.ID) (snowman.Block, error) { return vm.getBlock
 
 func (vm *VM) getBlock(blkID ids.ID) (Block, error) {
 	// If block is in memory, return it.
-	if blk, exists := vm.currentBlocks[blkID]; exists {
+	if blk, exists := vm.verifiedBlocks[blkID]; exists {
 		return blk, nil
 	}
 

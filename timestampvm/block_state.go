@@ -43,8 +43,6 @@ type blockState struct {
 type blkWrapper struct {
 	Blk    []byte         `serialize:"true"`
 	Status choices.Status `serialize:"true"`
-
-	block Block
 }
 
 func NewBlockState(db database.Database, vm *VM) BlockState {
@@ -76,8 +74,8 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 		return nil, err
 	}
 
-	var blk Block
-	if _, err := Codec.Unmarshal(blkw.Blk, &blk); err != nil {
+	blk := &TimeBlock{}
+	if _, err := Codec.Unmarshal(blkw.Blk, blk); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +90,6 @@ func (s *blockState) PutBlock(blk Block) error {
 	blkw := blkWrapper{
 		Blk:    blk.Bytes(),
 		Status: blk.Status(),
-		block:  blk,
 	}
 
 	bytes, err := Codec.Marshal(CodecVersion, &blkw)

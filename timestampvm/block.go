@@ -79,7 +79,7 @@ func (b *TimeBlock) Verify() error {
 		return errTimestampTooLate
 	}
 
-	b.vm.currentBlocks[b.id] = b
+	b.vm.verifiedBlocks[b.id] = b
 
 	return nil
 }
@@ -108,6 +108,8 @@ func (b *TimeBlock) Accept() error {
 	if err := b.vm.state.SetLastAccepted(blkID); err != nil {
 		return err
 	}
+
+	delete(b.vm.verifiedBlocks, b.ID())
 	return b.vm.state.Commit()
 }
 
@@ -118,6 +120,7 @@ func (b *TimeBlock) Reject() error {
 	if err := b.vm.state.PutBlock(b); err != nil {
 		return err
 	}
+	delete(b.vm.verifiedBlocks, b.ID())
 	return b.vm.state.Commit()
 }
 
