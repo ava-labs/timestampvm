@@ -13,8 +13,10 @@ import (
 )
 
 var (
-	errBadData     = errors.New("data must be base 58 repr. of 32 bytes")
-	errNoSuchBlock = errors.New("couldn't get block from database. Does it exist?")
+	errBadData               = errors.New("data must be base 58 repr. of 32 bytes")
+	errNoSuchBlock           = errors.New("couldn't get block from database. Does it exist?")
+	errCannotGetLastAccepted = errors.New("problem getting last accepted")
+	errCannotParseID         = errors.New("problem parsing ID")
 )
 
 // Service is the API service for this VM
@@ -71,11 +73,14 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	var id ids.ID
 	var err error
 	if args.ID == "" {
-		id = s.vm.state.GetLastAccepted()
+		id, err = s.vm.state.GetLastAccepted()
+		if err != nil {
+			return errCannotGetLastAccepted
+		}
 	} else {
 		id, err = ids.FromString(args.ID)
 		if err != nil {
-			return errors.New("problem parsing ID")
+			return errCannotParseID
 		}
 	}
 

@@ -11,8 +11,14 @@ import (
 )
 
 const (
+	lastAcceptedByte byte = iota
+)
+
+const (
 	blockCacheSize = 8192
 )
+
+var lastAcceptedKey = []byte{lastAcceptedByte}
 
 var _ BlockState = &blockState{}
 
@@ -20,8 +26,8 @@ type BlockState interface {
 	GetBlock(blkID ids.ID) (Block, error)
 	PutBlock(blk Block) error
 
-	GetLastAccepted() ids.ID
-	SetLastAccepted(ids.ID)
+	GetLastAccepted() (ids.ID, error)
+	SetLastAccepted(ids.ID) error
 
 	ClearCache()
 }
@@ -94,8 +100,30 @@ func (s *blockState) DeleteBlock(blkID ids.ID) error {
 	return s.blockDB.Delete(blkID[:])
 }
 
-func (s *blockState) GetLastAccepted() ids.ID             { return s.lastAccepted }
-func (s *blockState) SetLastAccepted(lastAccepted ids.ID) { s.lastAccepted = lastAccepted }
+func (s *blockState) GetLastAccepted() (ids.ID, error) {
+	if s.lastAccepted != ids.Empty {
+		return s.lastAccepted, nil
+	}
+
+	lastAcceptedBytes, err := s.blockDB.Get(lastAcceptedKey)
+	if err != nil {
+		return ids.ID{}, err
+	}
+	lastAccepted, err := ids.ToID(lastAcceptedBytes)
+	if err != nil {
+		return ids.ID{}, err
+	}
+	s.lastAccepted = lastAccepted
+	return lastAccepted, nil
+}
+
+func (s *blockState) SetLastAccepted(lastAccepted ids.ID) error {
+	if s.lastAccepted == lastAccepted {
+		return nil
+	}
+	s.lastAccepted = lastAccepted
+	return s.blockDB.Put(lastAcceptedKey, lastAccepted[:])
+}
 
 func (s *blockState) ClearCache() {
 	s.blkCache.Flush()

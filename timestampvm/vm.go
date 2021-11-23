@@ -89,11 +89,15 @@ func (vm *VM) Initialize(
 	if err := vm.initGenesis(genesisData); err != nil {
 		return err
 	}
+	lastAccepted, err := vm.state.GetLastAccepted()
+	if err != nil {
+		return err
+	}
 
-	ctx.Log.Info("initializing last accepted block as %s", vm.state.GetLastAccepted())
+	ctx.Log.Info("initializing last accepted block as %s", lastAccepted)
 
 	// Build off the most recently accepted block
-	return vm.SetPreference(vm.state.GetLastAccepted())
+	return vm.SetPreference(lastAccepted)
 }
 
 // SetDBInitialized marks the database as initialized
@@ -139,7 +143,9 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return fmt.Errorf("error while setting db to initialized: %w", err)
 	}
 
-	vm.state.SetLastAccepted(genesisBlock.ID())
+	if err := vm.state.SetLastAccepted(genesisBlock.ID()); err != nil {
+		return err
+	}
 
 	// Flush VM's database to underlying db
 	return vm.state.Commit()
@@ -244,7 +250,7 @@ func (vm *VM) getBlock(blkID ids.ID) (Block, error) {
 }
 
 // LastAccepted returns the block most recently accepted
-func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted(), nil }
+func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted() }
 
 // proposeBlock appends [data] to [p.mempool].
 // Then it notifies the consensus engine

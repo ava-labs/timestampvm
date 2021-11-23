@@ -100,7 +100,9 @@ func (b *TimeBlock) Accept() error {
 		return err
 	}
 
-	b.vm.state.SetLastAccepted(blkID) // Change state of VM
+	if err := b.vm.state.SetLastAccepted(blkID); err != nil {
+		return err
+	}
 	return b.vm.state.Commit()
 }
 
