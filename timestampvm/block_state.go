@@ -56,8 +56,18 @@ func NewBlockState(db database.Database, vm *VM) BlockState {
 }
 
 func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
+	if blkIntf, cached := s.blkCache.Get(blkID); cached {
+		if blkIntf == nil {
+			return nil, database.ErrNotFound
+		}
+		return blkIntf.(Block), nil
+	}
+
 	blkBytes, err := s.blockDB.Get(blkID[:])
 	if err != nil {
+		if err == database.ErrNotFound {
+			s.blkCache.Put(blkID, nil)
+		}
 		return nil, err
 	}
 
@@ -66,7 +76,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 		return nil, err
 	}
 
-	blk := TimeBlock{}
+	var blk Block
 	if _, err := Codec.Unmarshal(blkw.Blk, &blk); err != nil {
 		return nil, err
 	}
@@ -75,7 +85,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 
 	s.blkCache.Put(blkID, blk)
 
-	return &blk, nil
+	return blk, nil
 }
 
 func (s *blockState) PutBlock(blk Block) error {
@@ -91,7 +101,8 @@ func (s *blockState) PutBlock(blk Block) error {
 	}
 
 	blkID := blk.ID()
-	s.blkCache.Put(blkID, &blk)
+	s.blkCache.Put(blkID, blk)
+
 	return s.blockDB.Put(blkID[:], bytes)
 }
 

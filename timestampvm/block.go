@@ -18,7 +18,6 @@ var (
 	errTimestampTooEarly = errors.New("block's timestamp is earlier than its parent's timestamp")
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
-	errBlockType         = errors.New("unexpected block type")
 	errBlockNil          = errors.New("block is nil")
 
 	_ Block = &TimeBlock{}
@@ -56,13 +55,9 @@ func (b *TimeBlock) Verify() error {
 
 	// Get [b]'s parent
 	parentID := b.Parent()
-	parentIntf, err := b.vm.GetBlock(parentID)
+	parent, err := b.vm.GetBlock(parentID)
 	if err != nil {
 		return errDatabaseGet
-	}
-	parent, ok := parentIntf.(*TimeBlock)
-	if !ok {
-		return errBlockType
 	}
 
 	if expectedHeight := parent.Height() + 1; expectedHeight != b.Hght {
