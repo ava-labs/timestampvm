@@ -79,7 +79,7 @@ func (s *blockState) PutBlock(blk Block) error {
 		block:  blk,
 	}
 
-	bytes, err := Codec.Marshal(codecVersion, &blkw)
+	bytes, err := Codec.Marshal(CodecVersion, &blkw)
 	if err != nil {
 		return err
 	}

@@ -285,7 +285,7 @@ func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, times
 	block := newTimeBlock(parentID, height, data, timestamp)
 
 	// Get the byte representation of the block
-	blockBytes, err := Codec.Marshal(codecVersion, block)
+	blockBytes, err := Codec.Marshal(CodecVersion, block)
 	if err != nil {
 		return nil, err
 	}
