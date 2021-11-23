@@ -84,7 +84,7 @@ func (b *TimeBlock) Verify() error {
 	}
 
 	// Put that block to verified blocks in memory
-	b.vm.verifiedBlocks[b.id] = b
+	b.vm.verifiedBlocks[b.ID()] = b
 
 	return nil
 }

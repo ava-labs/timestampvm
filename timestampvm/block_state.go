@@ -58,6 +58,7 @@ func NewBlockState(db database.Database, vm *VM) BlockState {
 	return &blockState{
 		blkCache: &cache.LRU{Size: blockCacheSize},
 		blockDB:  db,
+		vm:       vm,
 	}
 }
 
