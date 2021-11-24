@@ -30,7 +30,7 @@ const (
 var (
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
-	Version            = version.NewDefaultVersion(1, 1, 2)
+	Version            = version.NewDefaultVersion(1, 2, 0)
 
 	_ block.ChainVM = &VM{}
 )
