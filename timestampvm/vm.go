@@ -286,6 +286,12 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	// Initialize the block
 	block.Initialize(bytes, choices.Processing, vm)
 
+	if blk, err := vm.getBlock(block.ID()); err == nil {
+		// If we have seen this block before, return it with the most up-to-date
+		// info
+		return blk, nil
+	}
+
 	// Return the block
 	return block, nil
 }
