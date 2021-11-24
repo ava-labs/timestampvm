@@ -18,7 +18,6 @@ var (
 	errTimestampTooEarly = errors.New("block's timestamp is earlier than its parent's timestamp")
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
-	errBlockNil          = errors.New("block is nil")
 
 	_ Block = &TimeBlock{}
 )
@@ -52,10 +51,6 @@ type TimeBlock struct {
 // To be valid, it must be that:
 // b.parent.Timestamp < b.Timestamp <= [local time] + 1 hour
 func (b *TimeBlock) Verify() error {
-	if b == nil {
-		return errBlockNil
-	}
-
 	// Get [b]'s parent
 	parentID := b.Parent()
 	parent, err := b.vm.GetBlock(parentID)

@@ -311,13 +311,8 @@ func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, times
 
 // Shutdown this vm
 func (vm *VM) Shutdown() error {
-	if ok, err := vm.state.IsInitialized(); !ok {
-		return err
-	}
-
-	// flush DB
-	if err := vm.state.Commit(); err != nil {
-		return err
+	if vm.state == nil {
+		return nil
 	}
 
 	return vm.state.Close() // close versionDB

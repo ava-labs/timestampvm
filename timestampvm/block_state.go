@@ -31,8 +31,6 @@ type BlockState interface {
 
 	GetLastAccepted() (ids.ID, error)
 	SetLastAccepted(ids.ID) error
-
-	ClearCache()
 }
 
 // blockState implements BlocksState interface with database and cache.
@@ -168,9 +166,4 @@ func (s *blockState) SetLastAccepted(lastAccepted ids.ID) error {
 	s.lastAccepted = lastAccepted
 	// persist lastAccepted ID to database with fixed lastAcceptedKey
 	return s.blockDB.Put(lastAcceptedKey, lastAccepted[:])
-}
-
-// ClearCache resets the whole cache
-func (s *blockState) ClearCache() {
-	s.blkCache.Flush()
 }

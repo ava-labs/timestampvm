@@ -45,14 +45,6 @@ func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *P
 	return nil
 }
 
-// APIBlock is the API representation of a block
-type APIBlock struct {
-	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of most recent block
-	Data      string      `json:"data"`      // Data in the most recent block. Base 58 repr. of 5 bytes.
-	ID        string      `json:"id"`        // String repr. of ID of the most recent block
-	ParentID  string      `json:"parentID"`  // String repr. of ID of the most recent block's parent
-}
-
 // GetBlockArgs are the arguments to GetBlock
 type GetBlockArgs struct {
 	// ID of the block we're getting.
@@ -62,7 +54,10 @@ type GetBlockArgs struct {
 
 // GetBlockReply is the reply from GetBlock
 type GetBlockReply struct {
-	APIBlock
+	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of most recent block
+	Data      string      `json:"data"`      // Data in the most recent block. Base 58 repr. of 5 bytes.
+	ID        string      `json:"id"`        // String repr. of ID of the most recent block
+	ParentID  string      `json:"parentID"`  // String repr. of ID of the most recent block's parent
 }
 
 // GetBlock gets the block whose ID is [args.ID]
@@ -96,9 +91,9 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	}
 
 	// Fill out the response with the block's data
-	reply.APIBlock.ID = block.ID().String()
-	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp().Unix())
-	reply.APIBlock.ParentID = block.Parent().String()
+	reply.ID = block.ID().String()
+	reply.Timestamp = json.Uint64(block.Timestamp().Unix())
+	reply.ParentID = block.Parent().String()
 	data := block.Data()
 	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, data[:])
 
