@@ -64,8 +64,11 @@ type GetBlockReply struct {
 func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockReply) error {
 	// If an ID is given, parse its string representation to an ids.ID
 	// If no ID is given, ID becomes the ID of last accepted block
-	var id ids.ID
-	var err error
+	var (
+		id  ids.ID
+		err error
+	)
+
 	if args.ID == nil {
 		id, err = s.vm.state.GetLastAccepted()
 		if err != nil {
