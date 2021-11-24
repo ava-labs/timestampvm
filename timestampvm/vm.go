@@ -216,23 +216,23 @@ func (vm *VM) BuildBlock() (snowman.Block, error) {
 	}
 
 	// Gets Preferred Block
-	preferredIntf, err := vm.getBlock(vm.preferred)
+	preferredBlock, err := vm.getBlock(vm.preferred)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get preferred block: %w", err)
 	}
-	preferredHeight := preferredIntf.Height()
+	preferredHeight := preferredBlock.Height()
 
 	// Build the block with preferred height
-	block, err := vm.NewBlock(vm.preferred, preferredHeight+1, value, time.Now())
+	newBlock, err := vm.NewBlock(vm.preferred, preferredHeight+1, value, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build block: %w", err)
 	}
 
 	// Verifies block
-	if err := block.Verify(); err != nil {
+	if err := newBlock.Verify(); err != nil {
 		return nil, err
 	}
-	return block, nil
+	return newBlock, nil
 }
 
 // NotifyBlockReady tells the consensus engine that a new block
