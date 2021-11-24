@@ -9,35 +9,28 @@ import (
 	"time"
 
 	"github.com/gorilla/rpc/v2"
-
 	log "github.com/inconshreveable/log15"
 
-	"github.com/ava-labs/avalanchego/codec"
-	"github.com/ava-labs/avalanchego/codec/linearcodec"
 	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/snow/choices"
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
+	"github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/version"
-	"github.com/ava-labs/avalanchego/vms/components/core"
-
-	cjson "github.com/ava-labs/avalanchego/utils/json"
 )
 
 const (
-	Name = "timestampvm"
-
-	dataLen      = 32
-	codecVersion = 0
+	dataLen = 32
+	Name    = "timestampvm"
 )
 
 var (
-	Version = version.NewDefaultVersion(1, 1, 2)
-
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
+	Version            = version.NewDefaultVersion(1, 1, 2)
 
 	_ block.ChainVM = &VM{}
 )
@@ -46,10 +39,26 @@ var (
 // Each block in this chain contains a Unix timestamp
 // and a piece of data (a string)
 type VM struct {
-	core.SnowmanVM
-	codec codec.Manager
+	// The context of this vm
+	ctx       *snow.Context
+	dbManager manager.Manager
+
+	// State of this VM
+	state State
+
+	// ID of the preferred block
+	preferred ids.ID
+
+	// channel to send messages to the consensus engine
+	toEngine chan<- common.Message
+
 	// Proposed pieces of data that haven't been put into a block and proposed yet
 	mempool [][dataLen]byte
+
+	// Block ID --> Block
+	// Each element is a block that passed verification but
+	// hasn't yet been accepted/rejected
+	verifiedBlocks map[ids.ID]*Block
 }
 
 // Initialize this vm
@@ -74,86 +83,117 @@ func (vm *VM) Initialize(
 		return err
 	}
 	log.Info("Initializing Timestamp VM", "Version", version)
-	if err := vm.SnowmanVM.Initialize(ctx, dbManager.Current().Database, vm.ParseBlock, toEngine); err != nil {
-		log.Error("error initializing SnowmanVM: %v", err)
+
+	vm.dbManager = dbManager
+	vm.ctx = ctx
+	vm.toEngine = toEngine
+	vm.verifiedBlocks = make(map[ids.ID]*Block)
+
+	// Create new state
+	vm.state = NewState(vm.dbManager.Current().Database, vm)
+
+	// Initialize genesis
+	if err := vm.initGenesis(genesisData); err != nil {
 		return err
 	}
-	c := linearcodec.NewDefault()
-	manager := codec.NewDefaultManager()
-	if err := manager.RegisterCodec(codecVersion, c); err != nil {
+
+	// Get last accepted
+	lastAccepted, err := vm.state.GetLastAccepted()
+	if err != nil {
 		return err
 	}
-	vm.codec = manager
 
-	// If database is empty, create it using the provided genesis data
-	if !vm.DBInitialized() {
-		if len(genesisData) > dataLen {
-			return errBadGenesisBytes
-		}
+	ctx.Log.Info("initializing last accepted block as %s", lastAccepted)
 
-		// genesisData is a byte slice but each block contains an byte array
-		// Take the first [dataLen] bytes from genesisData and put them in an array
-		var genesisDataArr [dataLen]byte
-		copy(genesisDataArr[:], genesisData)
+	// Build off the most recently accepted block
+	return vm.SetPreference(lastAccepted)
+}
 
-		// Create the genesis block
-		// Timestamp of genesis block is 0. It has no parent.
-		genesisBlock, err := vm.NewBlock(ids.Empty, 0, genesisDataArr, time.Unix(0, 0))
-		if err != nil {
-			log.Error("error while creating genesis block: %v", err)
-			return err
-		}
-
-		if err := vm.SaveBlock(vm.DB, genesisBlock); err != nil {
-			log.Error("error while saving genesis block: %v", err)
-			return err
-		}
-
-		// Accept the genesis block
-		// Sets [vm.lastAccepted] and [vm.preferred]
-		if err := genesisBlock.Accept(); err != nil {
-			return fmt.Errorf("error accepting genesis block: %w", err)
-		}
-
-		if err := vm.SetDBInitialized(); err != nil {
-			return fmt.Errorf("error while setting db to initialized: %w", err)
-		}
-
-		// Flush VM's database to underlying db
-		if err := vm.DB.Commit(); err != nil {
-			log.Error("error while committing db: %v", err)
-			return err
-		}
+// Initializes Genesis if required
+func (vm *VM) initGenesis(genesisData []byte) error {
+	stateInitialized, err := vm.state.IsInitialized()
+	if err != nil {
+		return err
 	}
-	return nil
+
+	// if state is already initialized, skip init genesis.
+	if stateInitialized {
+		return nil
+	}
+
+	if len(genesisData) > dataLen {
+		return errBadGenesisBytes
+	}
+
+	// genesisData is a byte slice but each block contains an byte array
+	// Take the first [dataLen] bytes from genesisData and put them in an array
+	var genesisDataArr [dataLen]byte
+	copy(genesisDataArr[:], genesisData)
+
+	// Create the genesis block
+	// Timestamp of genesis block is 0. It has no parent.
+	genesisBlock, err := vm.NewBlock(ids.Empty, 0, genesisDataArr, time.Unix(0, 0))
+	if err != nil {
+		log.Error("error while creating genesis block: %v", err)
+		return err
+	}
+
+	// Put genesis block to state
+	if err := vm.state.PutBlock(genesisBlock); err != nil {
+		log.Error("error while saving genesis block: %v", err)
+		return err
+	}
+
+	// Accept the genesis block
+	// Sets [vm.lastAccepted] and [vm.preferred]
+	if err := genesisBlock.Accept(); err != nil {
+		return fmt.Errorf("error accepting genesis block: %w", err)
+	}
+
+	// Mark this vm's state as initialized, so we can skip initGenesis in further restarts
+	if err := vm.state.SetInitialized(); err != nil {
+		return fmt.Errorf("error while setting db to initialized: %w", err)
+	}
+
+	// Flush VM's database to underlying db
+	return vm.state.Commit()
 }
 
 // CreateHandlers returns a map where:
 // Keys: The path extension for this VM's API (empty in this case)
 // Values: The handler for the API
 func (vm *VM) CreateHandlers() (map[string]*common.HTTPHandler, error) {
-	handler, err := vm.NewHandler(Name, &Service{vm})
+	server := rpc.NewServer()
+	server.RegisterCodec(json.NewCodec(), "application/json")
+	server.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
+	if err := server.RegisterService(&Service{vm: vm}, Name); err != nil {
+		return nil, err
+	}
+
 	return map[string]*common.HTTPHandler{
-		"": handler,
-	}, err
+		"": {
+			Handler: server,
+		},
+	}, nil
 }
 
 // CreateStaticHandlers returns a map where:
 // Keys: The path extension for this VM's static API
 // Values: The handler for that static API
-// We return nil because this VM has no static API
-// CreateStaticHandlers implements the common.StaticVM interface
 func (vm *VM) CreateStaticHandlers() (map[string]*common.HTTPHandler, error) {
-	newServer := rpc.NewServer()
-	codec := cjson.NewCodec()
-	newServer.RegisterCodec(codec, "application/json")
-	newServer.RegisterCodec(codec, "application/json;charset=UTF-8")
+	server := rpc.NewServer()
+	server.RegisterCodec(json.NewCodec(), "application/json")
+	server.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
+	if err := server.RegisterService(&StaticService{}, Name); err != nil {
+		return nil, err
+	}
 
-	// name this service "timestamp"
-	staticService := CreateStaticService()
 	return map[string]*common.HTTPHandler{
-		"": {LockOptions: common.WriteLock, Handler: newServer},
-	}, newServer.RegisterService(staticService, Name)
+		"": {
+			LockOptions: common.NoLock,
+			Handler:     server,
+		},
+	}, nil
 }
 
 // Health implements the common.VM interface
@@ -176,24 +216,49 @@ func (vm *VM) BuildBlock() (snowman.Block, error) {
 	}
 
 	// Gets Preferred Block
-	preferredIntf, err := vm.GetBlock(vm.Preferred())
+	preferredBlock, err := vm.getBlock(vm.preferred)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get preferred block: %w", err)
 	}
-	preferredHeight := preferredIntf.(*Block).Height()
+	preferredHeight := preferredBlock.Height()
 
 	// Build the block with preferred height
-	block, err := vm.NewBlock(vm.Preferred(), preferredHeight+1, value, time.Now())
+	newBlock, err := vm.NewBlock(vm.preferred, preferredHeight+1, value, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build block: %w", err)
 	}
 
 	// Verifies block
-	if err := block.Verify(); err != nil {
+	if err := newBlock.Verify(); err != nil {
 		return nil, err
 	}
-	return block, nil
+	return newBlock, nil
 }
+
+// NotifyBlockReady tells the consensus engine that a new block
+// is ready to be created
+func (vm *VM) NotifyBlockReady() {
+	select {
+	case vm.toEngine <- common.PendingTxs:
+	default:
+		vm.ctx.Log.Debug("dropping message to consensus engine")
+	}
+}
+
+// GetBlock implements the snowman.ChainVM interface
+func (vm *VM) GetBlock(blkID ids.ID) (snowman.Block, error) { return vm.getBlock(blkID) }
+
+func (vm *VM) getBlock(blkID ids.ID) (*Block, error) {
+	// If block is in memory, return it.
+	if blk, exists := vm.verifiedBlocks[blkID]; exists {
+		return blk, nil
+	}
+
+	return vm.state.GetBlock(blkID)
+}
+
+// LastAccepted returns the block most recently accepted
+func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted() }
 
 // proposeBlock appends [data] to [p.mempool].
 // Then it notifies the consensus engine
@@ -213,14 +278,19 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	block := &Block{}
 
 	// Unmarshal the byte repr. of the block into our empty block
-	_, err := vm.codec.Unmarshal(bytes, block)
+	_, err := Codec.Unmarshal(bytes, block)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize the block
-	// (Block inherits Initialize from its embedded *core.Block)
-	block.Initialize(bytes, &vm.SnowmanVM)
+	block.Initialize(bytes, choices.Processing, vm)
+
+	if blk, err := vm.getBlock(block.ID()); err == nil {
+		// If we have seen this block before, return it with the most up-to-date
+		// info
+		return blk, nil
+	}
 
 	// Return the block
 	return block, nil
@@ -230,25 +300,46 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's parent is [parentID]
 // - the block's data is [data]
 // - the block's timestamp is [timestamp]
-// The block is persisted in storage
 func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
-	// Create our new block
 	block := &Block{
-		Block: core.NewBlock(parentID, height, timestamp.Unix()),
-		Data:  data,
+		PrntID: parentID,
+		Hght:   height,
+		Tmstmp: timestamp.Unix(),
+		Dt:     data,
 	}
 
 	// Get the byte representation of the block
-	blockBytes, err := vm.codec.Marshal(codecVersion, block)
+	blockBytes, err := Codec.Marshal(CodecVersion, block)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize the block by providing it with its byte representation
-	// and a reference to SnowmanVM
-	block.Initialize(blockBytes, &vm.SnowmanVM)
+	// and a reference to this VM
+	block.Initialize(blockBytes, choices.Processing, vm)
 	return block, nil
 }
+
+// Shutdown this vm
+func (vm *VM) Shutdown() error {
+	if vm.state == nil {
+		return nil
+	}
+
+	return vm.state.Close() // close versionDB
+}
+
+// SetPreference sets the block with ID [ID] as the preferred block
+func (vm *VM) SetPreference(id ids.ID) error {
+	vm.preferred = id
+	return nil
+}
+
+// Bootstrapped marks this VM as bootstrapped
+func (vm *VM) Bootstrapped() error { return nil }
+
+// Bootstrapping marks this VM as bootstrapping
+func (vm *VM) Bootstrapping() error { return nil }
 
 // Returns this VM's version
 func (vm *VM) Version() (string, error) {

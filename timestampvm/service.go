@@ -5,7 +5,6 @@ package timestampvm
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -14,8 +13,9 @@ import (
 )
 
 var (
-	errBadData     = errors.New("data must be base 58 repr. of 32 bytes")
-	errNoSuchBlock = errors.New("couldn't get block from database. Does it exist?")
+	errBadData               = errors.New("data must be base 58 repr. of 32 bytes")
+	errNoSuchBlock           = errors.New("couldn't get block from database. Does it exist?")
+	errCannotGetLastAccepted = errors.New("problem getting last accepted")
 )
 
 // Service is the API service for this VM
@@ -44,24 +44,19 @@ func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *P
 	return nil
 }
 
-// APIBlock is the API representation of a block
-type APIBlock struct {
-	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of most recent block
-	Data      string      `json:"data"`      // Data in the most recent block. Base 58 repr. of 5 bytes.
-	ID        string      `json:"id"`        // String repr. of ID of the most recent block
-	ParentID  string      `json:"parentID"`  // String repr. of ID of the most recent block's parent
-}
-
 // GetBlockArgs are the arguments to GetBlock
 type GetBlockArgs struct {
 	// ID of the block we're getting.
 	// If left blank, gets the latest block
-	ID string
+	ID *ids.ID `json:"id"`
 }
 
 // GetBlockReply is the reply from GetBlock
 type GetBlockReply struct {
-	APIBlock
+	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of most recent block
+	Data      string      `json:"data"`      // Data in the most recent block. Base 58 repr. of 5 bytes.
+	ID        ids.ID      `json:"id"`        // String repr. of ID of the most recent block
+	ParentID  ids.ID      `json:"parentID"`  // String repr. of ID of the most recent block's parent
 }
 
 // GetBlock gets the block whose ID is [args.ID]
@@ -69,36 +64,32 @@ type GetBlockReply struct {
 func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockReply) error {
 	// If an ID is given, parse its string representation to an ids.ID
 	// If no ID is given, ID becomes the ID of last accepted block
-	var id ids.ID
-	var err error
-	if args.ID == "" {
-		id, err = s.vm.LastAccepted()
+	var (
+		id  ids.ID
+		err error
+	)
+
+	if args.ID == nil {
+		id, err = s.vm.state.GetLastAccepted()
 		if err != nil {
-			return fmt.Errorf("problem finding the last accepted ID: %s", err)
+			return errCannotGetLastAccepted
 		}
 	} else {
-		id, err = ids.FromString(args.ID)
-		if err != nil {
-			return errors.New("problem parsing ID")
-		}
+		id = *args.ID
 	}
 
 	// Get the block from the database
-	blockInterface, err := s.vm.GetBlock(id)
+	block, err := s.vm.getBlock(id)
 	if err != nil {
 		return errNoSuchBlock
 	}
 
-	block, ok := blockInterface.(*Block)
-	if !ok { // Should never happen but better to check than to panic
-		return errBadData
-	}
-
 	// Fill out the response with the block's data
-	reply.APIBlock.ID = block.ID().String()
-	reply.APIBlock.Timestamp = json.Uint64(block.Timestamp().Unix())
-	reply.APIBlock.ParentID = block.Parent().String()
-	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, block.Data[:])
+	reply.ID = block.ID()
+	reply.Timestamp = json.Uint64(block.Timestamp().Unix())
+	reply.ParentID = block.Parent()
+	data := block.Data()
+	reply.Data, err = formatting.EncodeWithChecksum(formatting.CB58, data[:])
 
 	return err
 }

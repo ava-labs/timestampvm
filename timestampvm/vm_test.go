@@ -4,7 +4,6 @@
 package timestampvm
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ava-labs/avalanchego/database/manager"
@@ -12,29 +11,10 @@ import (
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/version"
+	"github.com/stretchr/testify/assert"
 )
 
 var blockchainID = ids.ID{1, 2, 3}
-
-// Utility function to assert that [block] has:
-// * Parent with ID [parentID]
-// * Data [expectedData]
-// * Verify() returns nil iff passesVerify == true
-func assertBlock(block *Block, parentID ids.ID, expectedData [dataLen]byte, passesVerify bool) error {
-	if block.Parent() != parentID {
-		return fmt.Errorf("expect parent ID to be %s but was %s", parentID, block.Parent())
-	}
-	if block.Data != expectedData {
-		return fmt.Errorf("expected data to be %v but was %v", expectedData, block.Data)
-	}
-	if block.Verify() != nil && passesVerify {
-		return fmt.Errorf("expected block to pass verification but it fails")
-	}
-	if block.Verify() == nil && !passesVerify {
-		return fmt.Errorf("expected block to fail verification but it passes")
-	}
-	return nil
-}
 
 // Assert that after initialization, the vm has the state we expect
 func TestGenesis(t *testing.T) {
@@ -44,40 +24,26 @@ func TestGenesis(t *testing.T) {
 	vm := &VM{}
 	ctx := snow.DefaultContextTest()
 	ctx.ChainID = blockchainID
-
-	if err := vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-
+	assert := assert.New(t)
+	assert.NoError(vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
 	// Verify that the db is initialized
-	if !vm.DBInitialized() {
-		t.Fatal("db should be initialized")
-	}
+	ok, err := vm.state.IsInitialized()
+	assert.NoError(err)
+	assert.True(ok)
 
 	// Get lastAccepted
 	lastAccepted, err := vm.LastAccepted()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lastAccepted == ids.Empty {
-		t.Fatal("lastAccepted should not be empty")
-	}
+	assert.NoError(err)
+	assert.NotEqual(ids.Empty, lastAccepted)
 
 	// Verify that getBlock returns the genesis block, and the genesis block
 	// is the type we expect
-	genesisSnowmanBlock, err := vm.GetBlock(lastAccepted) // genesisBlock as snowman.Block
-	if err != nil {
-		t.Fatalf("couldn't get genesisBlock: %s", err)
-	}
-	genesisBlock, ok := genesisSnowmanBlock.(*Block) // type assert that genesisBlock is a *Block
-	if !ok {
-		t.Fatal("type of genesisBlock should be *Block")
-	}
+	genesisBlock, err := vm.getBlock(lastAccepted) // genesisBlock as snowman.Block
+	assert.NoError(err)
 
 	// Verify that the genesis block has the data we expect
-	if err := assertBlock(genesisBlock, ids.Empty, ids.ID{0, 0, 0, 0, 0}, true); err != nil {
-		t.Fatal(err)
-	}
+	assert.Equal(ids.Empty, genesisBlock.Parent())
+	assert.Equal([32]byte{0, 0, 0, 0, 0}, genesisBlock.Data())
 }
 
 func TestHappyPath(t *testing.T) {
@@ -87,22 +53,16 @@ func TestHappyPath(t *testing.T) {
 	vm := &VM{}
 	ctx := snow.DefaultContextTest()
 	ctx.ChainID = blockchainID
-	if err := vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil); err != nil {
-		t.Fatal(err)
-	}
+	assert := assert.New(t)
+	assert.NoError(vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
 
 	lastAcceptedID, err := vm.LastAccepted()
-	if err != nil {
-		t.Fatal(err)
-	}
-	genesisBlock, err := vm.GetBlock(lastAcceptedID)
-	if err != nil {
-		t.Fatal("could not get genesis block")
-	}
+	assert.NoError(err)
+	genesisBlock, err := vm.getBlock(lastAcceptedID)
+	assert.NoError(err)
+
 	// in an actual execution, the engine would set the preference
-	if err := vm.SetPreference(genesisBlock.ID()); err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(vm.SetPreference(genesisBlock.ID()))
 
 	ctx.Lock.Lock()
 	vm.proposeBlock([dataLen]byte{0, 0, 0, 0, 1}) // propose a value
@@ -110,105 +70,72 @@ func TestHappyPath(t *testing.T) {
 
 	select { // assert there is a pending tx message to the engine
 	case msg := <-msgChan:
-		if msg != common.PendingTxs {
-			t.Fatal("Wrong message")
-		}
+		assert.Equal(common.PendingTxs, msg)
 	default:
-		t.Fatal("should have been pendingTxs message on channel")
+		assert.FailNow("should have been pendingTxs message on channel")
 	}
 
 	// build the block
 	ctx.Lock.Lock()
 	snowmanBlock2, err := vm.BuildBlock()
-	if err != nil {
-		t.Fatalf("problem building block: %s", err)
-	}
-	if err := snowmanBlock2.Verify(); err != nil {
-		t.Fatal(err)
-	}
-	if err := snowmanBlock2.Accept(); err != nil { // accept the block
-		t.Fatal(err)
-	}
-	if err := vm.SetPreference(snowmanBlock2.ID()); err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(err)
+
+	assert.NoError(snowmanBlock2.Verify())
+	assert.NoError(snowmanBlock2.Accept())
+	assert.NoError(vm.SetPreference(snowmanBlock2.ID()))
 
 	lastAcceptedID, err = vm.LastAccepted()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(err)
+
 	// Should be the block we just accepted
-	snowmanBlock2, err = vm.GetBlock(lastAcceptedID)
-	if err != nil {
-		t.Fatal("couldn't get block")
-	}
-	block2, ok := snowmanBlock2.(*Block)
-	if !ok {
-		t.Fatal("genesis block should be type *Block")
-	}
+	block2, err := vm.getBlock(lastAcceptedID)
+	assert.NoError(err)
+
 	// Assert the block we accepted has the data we expect
-	if err := assertBlock(block2, genesisBlock.ID(), [dataLen]byte{0, 0, 0, 0, 1}, true); err != nil {
-		t.Fatal(err)
-	}
+	assert.Equal(genesisBlock.ID(), block2.Parent())
+	assert.Equal([dataLen]byte{0, 0, 0, 0, 1}, block2.Data())
+	assert.Equal(snowmanBlock2.ID(), block2.ID())
+	assert.NoError(block2.Verify())
 
 	vm.proposeBlock([dataLen]byte{0, 0, 0, 0, 2}) // propose a block
 	ctx.Lock.Unlock()
 
 	select { // verify there is a pending tx message to the engine
 	case msg := <-msgChan:
-		if msg != common.PendingTxs {
-			t.Fatal("Wrong message")
-		}
+		assert.Equal(common.PendingTxs, msg)
 	default:
-		t.Fatal("should have been pendingTxs message on channel")
+		assert.FailNow("should have been pendingTxs message on channel")
 	}
 
 	ctx.Lock.Lock()
 
 	// build the block
-	if block, err := vm.BuildBlock(); err != nil {
-		t.Fatalf("problem building block: %s", err)
-	} else {
-		if err := block.Verify(); err != nil {
-			t.Fatal(err)
-		}
-		if err := block.Accept(); err != nil { // accept the block
-			t.Fatal(err)
-		}
-		if err := vm.SetPreference(block.ID()); err != nil {
-			t.Fatal(err)
-		}
-	}
+	snowmanBlock3, err := vm.BuildBlock()
+	assert.NoError(err)
+	assert.NoError(snowmanBlock3.Verify())
+	assert.NoError(snowmanBlock3.Accept())
+	assert.NoError(vm.SetPreference(snowmanBlock3.ID()))
 
 	lastAcceptedID, err = vm.LastAccepted()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(err)
 	// The block we just accepted
-	snowmanBlock3, err := vm.GetBlock(lastAcceptedID)
-	if err != nil {
-		t.Fatal("couldn't get block")
-	}
-	block3, ok := snowmanBlock3.(*Block)
-	if !ok {
-		t.Fatal("genesis block should be type *Block")
-	}
+	block3, err := vm.getBlock(lastAcceptedID)
+	assert.NoError(err)
+
 	// Assert the block we accepted has the data we expect
-	if err := assertBlock(block3, snowmanBlock2.ID(), [dataLen]byte{0, 0, 0, 0, 2}, true); err != nil {
-		t.Fatal(err)
-	}
+	assert.Equal(snowmanBlock2.ID(), block3.Parent())
+	assert.Equal([dataLen]byte{0, 0, 0, 0, 2}, block3.Data())
+	assert.Equal(snowmanBlock3.ID(), block3.ID())
+	assert.NoError(block3.Verify())
 
 	// Next, check the blocks we added are there
-	if block2FromState, err := vm.GetBlock(block2.ID()); err != nil {
-		t.Fatal(err)
-	} else if block2FromState.ID() != block2.ID() {
-		t.Fatal("expected IDs to match but they don't")
-	}
-	if block3FromState, err := vm.GetBlock(block3.ID()); err != nil {
-		t.Fatal(err)
-	} else if block3FromState.ID() != block3.ID() {
-		t.Fatal("expected IDs to match but they don't")
-	}
+	block2FromState, err := vm.getBlock(block2.ID())
+	assert.NoError(err)
+	assert.Equal(block2.ID(), block2FromState.ID())
+
+	block3FromState, err := vm.getBlock(snowmanBlock3.ID())
+	assert.NoError(err)
+	assert.Equal(snowmanBlock3.ID(), block3FromState.ID())
 
 	ctx.Lock.Unlock()
 }
@@ -220,12 +147,7 @@ func TestService(t *testing.T) {
 	vm := &VM{}
 	ctx := snow.DefaultContextTest()
 	ctx.ChainID = blockchainID
-	if err := vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-
+	assert.NoError(t, vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
 	service := Service{vm}
-	if err := service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}); err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
 }
