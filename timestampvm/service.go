@@ -16,7 +16,6 @@ var (
 	errBadData               = errors.New("data must be base 58 repr. of 32 bytes")
 	errNoSuchBlock           = errors.New("couldn't get block from database. Does it exist?")
 	errCannotGetLastAccepted = errors.New("problem getting last accepted")
-	errCannotParseID         = errors.New("problem parsing ID")
 )
 
 // Service is the API service for this VM
@@ -49,7 +48,7 @@ func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *P
 type GetBlockArgs struct {
 	// ID of the block we're getting.
 	// If left blank, gets the latest block
-	ID string `json:"id"`
+	ID *ids.ID `json:"id"`
 }
 
 // GetBlockReply is the reply from GetBlock
@@ -67,16 +66,13 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	// If no ID is given, ID becomes the ID of last accepted block
 	var id ids.ID
 	var err error
-	if args.ID == "" {
+	if args.ID == nil {
 		id, err = s.vm.state.GetLastAccepted()
 		if err != nil {
 			return errCannotGetLastAccepted
 		}
 	} else {
-		id, err = ids.FromString(args.ID)
-		if err != nil {
-			return errCannotParseID
-		}
+		id = *args.ID
 	}
 
 	// Get the block from the database

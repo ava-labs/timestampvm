@@ -19,7 +19,7 @@ var (
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
 
-	_ snowman.Block = &TimeBlock{}
+	_ snowman.Block = &Block{}
 )
 
 // Block is a block on the chain.
@@ -28,7 +28,7 @@ var (
 // 2) Height
 // 3) Timestamp
 // 4) A piece of data (a string)
-type TimeBlock struct {
+type Block struct {
 	PrntID ids.ID        `serialize:"true" json:"parentID"`  // parent's ID
 	Hght   uint64        `serialize:"true" json:"height"`    // This block's height. The genesis block is at height 0.
 	Tmstmp int64         `serialize:"true" json:"timestamp"` // Time this block was proposed at
@@ -43,7 +43,7 @@ type TimeBlock struct {
 // Verify returns nil iff this block is valid.
 // To be valid, it must be that:
 // b.parent.Timestamp < b.Timestamp <= [local time] + 1 hour
-func (b *TimeBlock) Verify() error {
+func (b *Block) Verify() error {
 	// Get [b]'s parent
 	parentID := b.Parent()
 	parent, err := b.vm.getBlock(parentID)
@@ -79,7 +79,7 @@ func (b *TimeBlock) Verify() error {
 
 // Initialize sets [b.bytes] to [bytes], [b.id] to hash([b.bytes]),
 // [b.status] to [status] and [b.vm] to [vm]
-func (b *TimeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
+func (b *Block) Initialize(bytes []byte, status choices.Status, vm *VM) {
 	b.bytes = bytes
 	b.id = hashing.ComputeHash256Array(b.bytes)
 	b.status = status
@@ -88,7 +88,7 @@ func (b *TimeBlock) Initialize(bytes []byte, status choices.Status, vm *VM) {
 
 // Accept sets this block's status to Accepted and sets lastAccepted to this
 // block's ID and saves this info to b.vm.DB
-func (b *TimeBlock) Accept() error {
+func (b *Block) Accept() error {
 	b.SetStatus(choices.Accepted) // Change state of this block
 	blkID := b.ID()
 
@@ -111,7 +111,7 @@ func (b *TimeBlock) Accept() error {
 
 // Reject sets this block's status to Rejected and saves the status in state
 // Recall that b.vm.DB.Commit() must be called to persist to the DB
-func (b *TimeBlock) Reject() error {
+func (b *Block) Reject() error {
 	b.SetStatus(choices.Rejected) // Change state of this block
 	if err := b.vm.state.PutBlock(b); err != nil {
 		return err
@@ -123,25 +123,25 @@ func (b *TimeBlock) Reject() error {
 }
 
 // ID returns the ID of this block
-func (b *TimeBlock) ID() ids.ID { return b.id }
+func (b *Block) ID() ids.ID { return b.id }
 
 // ParentID returns [b]'s parent's ID
-func (b *TimeBlock) Parent() ids.ID { return b.PrntID }
+func (b *Block) Parent() ids.ID { return b.PrntID }
 
 // Height returns this block's height. The genesis block has height 0.
-func (b *TimeBlock) Height() uint64 { return b.Hght }
+func (b *Block) Height() uint64 { return b.Hght }
 
 // Timestamp returns this block's time. The genesis block has time 0.
-func (b *TimeBlock) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
+func (b *Block) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
 
 // Status returns the status of this block
-func (b *TimeBlock) Status() choices.Status { return b.status }
+func (b *Block) Status() choices.Status { return b.status }
 
 // Bytes returns the byte repr. of this block
-func (b *TimeBlock) Bytes() []byte { return b.bytes }
+func (b *Block) Bytes() []byte { return b.bytes }
 
 // Data returns the data of this block
-func (b *TimeBlock) Data() [dataLen]byte { return b.Dt }
+func (b *Block) Data() [dataLen]byte { return b.Dt }
 
 // SetStatus sets the status of this block
-func (b *TimeBlock) SetStatus(status choices.Status) { b.status = status }
+func (b *Block) SetStatus(status choices.Status) { b.status = status }

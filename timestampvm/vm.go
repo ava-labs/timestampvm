@@ -58,7 +58,7 @@ type VM struct {
 	// Block ID --> Block
 	// Each element is a block that passed verification but
 	// hasn't yet been accepted/rejected
-	verifiedBlocks map[ids.ID]*TimeBlock
+	verifiedBlocks map[ids.ID]*Block
 }
 
 // Initialize this vm
@@ -87,7 +87,7 @@ func (vm *VM) Initialize(
 	vm.dbManager = dbManager
 	vm.ctx = ctx
 	vm.toEngine = toEngine
-	vm.verifiedBlocks = make(map[ids.ID]*TimeBlock)
+	vm.verifiedBlocks = make(map[ids.ID]*Block)
 
 	// Create new state
 	vm.state = NewState(vm.dbManager.Current().Database, vm)
@@ -248,7 +248,7 @@ func (vm *VM) NotifyBlockReady() {
 // GetBlock implements the snowman.ChainVM interface
 func (vm *VM) GetBlock(blkID ids.ID) (snowman.Block, error) { return vm.getBlock(blkID) }
 
-func (vm *VM) getBlock(blkID ids.ID) (*TimeBlock, error) {
+func (vm *VM) getBlock(blkID ids.ID) (*Block, error) {
 	// If block is in memory, return it.
 	if blk, exists := vm.verifiedBlocks[blkID]; exists {
 		return blk, nil
@@ -275,7 +275,7 @@ func (vm *VM) proposeBlock(data [dataLen]byte) {
 // from another node
 func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 	// A new empty block
-	block := &TimeBlock{}
+	block := &Block{}
 
 	// Unmarshal the byte repr. of the block into our empty block
 	_, err := Codec.Unmarshal(bytes, block)
@@ -300,8 +300,8 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's parent is [parentID]
 // - the block's data is [data]
 // - the block's timestamp is [timestamp]
-func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*TimeBlock, error) {
-	block := &TimeBlock{
+func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
+	block := &Block{
 		PrntID: parentID,
 		Hght:   height,
 		Tmstmp: timestamp.Unix(),
