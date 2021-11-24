@@ -49,7 +49,7 @@ func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *P
 type GetBlockArgs struct {
 	// ID of the block we're getting.
 	// If left blank, gets the latest block
-	ID string
+	ID string `json:"id"`
 }
 
 // GetBlockReply is the reply from GetBlock
