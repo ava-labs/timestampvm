@@ -80,14 +80,9 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	}
 
 	// Get the block from the database
-	blockInterface, err := s.vm.GetBlock(id)
+	block, err := s.vm.getBlock(id)
 	if err != nil {
 		return errNoSuchBlock
-	}
-
-	block, ok := blockInterface.(*TimeBlock)
-	if !ok { // Should never happen but better to check than to panic
-		return errBadData
 	}
 
 	// Fill out the response with the block's data

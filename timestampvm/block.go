@@ -19,15 +19,8 @@ var (
 	errDatabaseGet       = errors.New("error while retrieving data from database")
 	errTimestampTooLate  = errors.New("block's timestamp is more than 1 hour ahead of local time")
 
-	_ Block = &TimeBlock{}
+	_ snowman.Block = &TimeBlock{}
 )
-
-// Block interface is a wrapper around snowman.Block
-type Block interface {
-	snowman.Block
-	Initialize(bytes []byte, status choices.Status, vm *VM)
-	Data() [dataLen]byte
-}
 
 // Block is a block on the chain.
 // Each block contains:
@@ -53,7 +46,7 @@ type TimeBlock struct {
 func (b *TimeBlock) Verify() error {
 	// Get [b]'s parent
 	parentID := b.Parent()
-	parent, err := b.vm.GetBlock(parentID)
+	parent, err := b.vm.getBlock(parentID)
 	if err != nil {
 		return errDatabaseGet
 	}

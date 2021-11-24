@@ -38,11 +38,8 @@ func TestGenesis(t *testing.T) {
 
 	// Verify that getBlock returns the genesis block, and the genesis block
 	// is the type we expect
-	genesisSnowmanBlock, err := vm.GetBlock(lastAccepted) // genesisBlock as snowman.Block
+	genesisBlock, err := vm.getBlock(lastAccepted) // genesisBlock as snowman.Block
 	assert.NoError(err)
-
-	genesisBlock, ok := genesisSnowmanBlock.(*TimeBlock) // type assert that genesisBlock is a *Block
-	assert.True(ok)
 
 	// Verify that the genesis block has the data we expect
 	assert.Equal(ids.Empty, genesisBlock.Parent())
@@ -61,7 +58,7 @@ func TestHappyPath(t *testing.T) {
 
 	lastAcceptedID, err := vm.LastAccepted()
 	assert.NoError(err)
-	genesisBlock, err := vm.GetBlock(lastAcceptedID)
+	genesisBlock, err := vm.getBlock(lastAcceptedID)
 	assert.NoError(err)
 
 	// in an actual execution, the engine would set the preference
@@ -91,15 +88,13 @@ func TestHappyPath(t *testing.T) {
 	assert.NoError(err)
 
 	// Should be the block we just accepted
-	snowmanBlock2, err = vm.GetBlock(lastAcceptedID)
+	block2, err := vm.getBlock(lastAcceptedID)
 	assert.NoError(err)
-	block2, ok := snowmanBlock2.(*TimeBlock)
-	assert.True(ok)
 
 	// Assert the block we accepted has the data we expect
 	assert.Equal(genesisBlock.ID(), block2.Parent())
 	assert.Equal([dataLen]byte{0, 0, 0, 0, 1}, block2.Data())
-
+	assert.Equal(snowmanBlock2.ID(), block2.ID())
 	assert.NoError(block2.Verify())
 
 	vm.proposeBlock([dataLen]byte{0, 0, 0, 0, 2}) // propose a block
@@ -115,33 +110,32 @@ func TestHappyPath(t *testing.T) {
 	ctx.Lock.Lock()
 
 	// build the block
-	block, err := vm.BuildBlock()
+	snowmanBlock3, err := vm.BuildBlock()
 	assert.NoError(err)
-	assert.NoError(block.Verify())
-	assert.NoError(block.Accept())
-	assert.NoError(vm.SetPreference(block.ID()))
+	assert.NoError(snowmanBlock3.Verify())
+	assert.NoError(snowmanBlock3.Accept())
+	assert.NoError(vm.SetPreference(snowmanBlock3.ID()))
 
 	lastAcceptedID, err = vm.LastAccepted()
 	assert.NoError(err)
 	// The block we just accepted
-	snowmanBlock3, err := vm.GetBlock(lastAcceptedID)
+	block3, err := vm.getBlock(lastAcceptedID)
 	assert.NoError(err)
-	block3, ok := snowmanBlock3.(*TimeBlock)
-	assert.True(ok)
 
 	// Assert the block we accepted has the data we expect
 	assert.Equal(snowmanBlock2.ID(), block3.Parent())
 	assert.Equal([dataLen]byte{0, 0, 0, 0, 2}, block3.Data())
+	assert.Equal(snowmanBlock3.ID(), block3.ID())
 	assert.NoError(block3.Verify())
 
 	// Next, check the blocks we added are there
-	block2FromState, err := vm.GetBlock(block2.ID())
+	block2FromState, err := vm.getBlock(block2.ID())
 	assert.NoError(err)
 	assert.Equal(block2.ID(), block2FromState.ID())
 
-	block3FromState, err := vm.GetBlock(block3.ID())
+	block3FromState, err := vm.getBlock(snowmanBlock3.ID())
 	assert.NoError(err)
-	assert.Equal(block3.ID(), block3FromState.ID())
+	assert.Equal(snowmanBlock3.ID(), block3FromState.ID())
 
 	ctx.Lock.Unlock()
 }

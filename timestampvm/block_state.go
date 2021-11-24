@@ -26,8 +26,8 @@ var _ BlockState = &blockState{}
 
 // BlockState defines methods to manage state with Blocks and LastAcceptedIDs.
 type BlockState interface {
-	GetBlock(blkID ids.ID) (Block, error)
-	PutBlock(blk Block) error
+	GetBlock(blkID ids.ID) (*TimeBlock, error)
+	PutBlock(blk *TimeBlock) error
 
 	GetLastAccepted() (ids.ID, error)
 	SetLastAccepted(ids.ID) error
@@ -61,7 +61,7 @@ func NewBlockState(db database.Database, vm *VM) BlockState {
 }
 
 // GetBlock gets Block from either cache or database
-func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
+func (s *blockState) GetBlock(blkID ids.ID) (*TimeBlock, error) {
 	// Check if cache has this blkID
 	if blkIntf, cached := s.blkCache.Get(blkID); cached {
 		// there is a key but value is nil, so return an error
@@ -69,7 +69,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 			return nil, database.ErrNotFound
 		}
 		// We found it return the block in cache
-		return blkIntf.(Block), nil
+		return blkIntf.(*TimeBlock), nil
 	}
 
 	// get block bytes from db with the blkID key
@@ -107,7 +107,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (Block, error) {
 }
 
 // PutBlock puts block into both database and cache
-func (s *blockState) PutBlock(blk Block) error {
+func (s *blockState) PutBlock(blk *TimeBlock) error {
 	// create block wrapper with block bytes and status
 	blkw := blkWrapper{
 		Blk:    blk.Bytes(),
