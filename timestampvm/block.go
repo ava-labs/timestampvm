@@ -145,13 +145,3 @@ func (b *TimeBlock) Data() [dataLen]byte { return b.Dt }
 
 // SetStatus sets the status of this block
 func (b *TimeBlock) SetStatus(status choices.Status) { b.status = status }
-
-func newTimeBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) *TimeBlock {
-	// Create our new time block
-	return &TimeBlock{
-		PrntID: parentID,
-		Hght:   height,
-		Tmstmp: timestamp.Unix(),
-		Dt:     data,
-	}
-}

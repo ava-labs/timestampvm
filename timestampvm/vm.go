@@ -295,7 +295,12 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's data is [data]
 // - the block's timestamp is [timestamp]
 func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*TimeBlock, error) {
-	block := newTimeBlock(parentID, height, data, timestamp)
+	block := &TimeBlock{
+		PrntID: parentID,
+		Hght:   height,
+		Tmstmp: timestamp.Unix(),
+		Dt:     data,
+	}
 
 	// Get the byte representation of the block
 	blockBytes, err := Codec.Marshal(CodecVersion, block)
