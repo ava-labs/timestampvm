@@ -59,6 +59,9 @@ type VM struct {
 	// Each element is a block that passed verification but
 	// hasn't yet been accepted/rejected
 	verifiedBlocks map[ids.ID]*Block
+
+	// Indicates that this VM has finised bootstrapping for the chain
+	bootstrapped bool
 }
 
 // Initialize this vm
@@ -335,11 +338,19 @@ func (vm *VM) SetPreference(id ids.ID) error {
 	return nil
 }
 
-// Bootstrapped marks this VM as bootstrapped
-func (vm *VM) Bootstrapped() error { return nil }
-
-// Bootstrapping marks this VM as bootstrapping
-func (vm *VM) Bootstrapping() error { return nil }
+// SetState sets this VM state according to given snow.State
+func (vm *VM) SetState(state snow.State) error {
+	switch state {
+	case snow.Bootstrapping:
+		vm.bootstrapped = false
+		return nil
+	case snow.NormalOp:
+		vm.bootstrapped = true
+		return nil
+	default:
+		return snow.ErrUnknownState
+	}
+}
 
 // Returns this VM's version
 func (vm *VM) Version() (string, error) {
