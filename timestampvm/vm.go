@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
+	"github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/version"
 )
@@ -61,7 +62,7 @@ type VM struct {
 	verifiedBlocks map[ids.ID]*Block
 
 	// Indicates that this VM has finised bootstrapping for the chain
-	bootstrapped bool
+	bootstrapped utils.AtomicBool
 }
 
 // Initialize this vm
@@ -342,10 +343,10 @@ func (vm *VM) SetPreference(id ids.ID) error {
 func (vm *VM) SetState(state snow.State) error {
 	switch state {
 	case snow.Bootstrapping:
-		vm.bootstrapped = false
+		vm.bootstrapped.SetValue(false)
 		return nil
 	case snow.NormalOp:
-		vm.bootstrapped = true
+		vm.bootstrapped.SetValue(true)
 		return nil
 	default:
 		return snow.ErrUnknownState
