@@ -28,7 +28,6 @@ var _ BlockState = &blockState{}
 type BlockState interface {
 	GetBlock(blkID ids.ID) (*Block, error)
 	PutBlock(blk *Block) error
-
 	GetLastAccepted() (ids.ID, error)
 	SetLastAccepted(ids.ID) error
 }
