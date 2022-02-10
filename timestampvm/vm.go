@@ -342,9 +342,11 @@ func (vm *VM) SetPreference(id ids.ID) error {
 // SetState sets this VM state according to given snow.State
 func (vm *VM) SetState(state snow.State) error {
 	switch state {
+	// Engine reports it's bootstrapping
 	case snow.Bootstrapping:
 		return vm.onBootstrapStarted()
 	case snow.NormalOp:
+		// Engine reports it can start normal operations
 		return vm.onNormalOperationsStarted()
 	default:
 		return snow.ErrUnknownState
@@ -359,6 +361,7 @@ func (vm *VM) onBootstrapStarted() error {
 
 // onNormalOperationsStarted marks this VM as bootstrapped
 func (vm *VM) onNormalOperationsStarted() error {
+	// No need to set it again
 	if vm.bootstrapped.GetValue() {
 		return nil
 	}
