@@ -343,14 +343,27 @@ func (vm *VM) SetPreference(id ids.ID) error {
 func (vm *VM) SetState(state snow.State) error {
 	switch state {
 	case snow.Bootstrapping:
-		vm.bootstrapped.SetValue(false)
-		return nil
+		return vm.onBootstrapStarted()
 	case snow.NormalOp:
-		vm.bootstrapped.SetValue(true)
-		return nil
+		return vm.onNormalOperationsStarted()
 	default:
 		return snow.ErrUnknownState
 	}
+}
+
+// onBootstrapStarted marks this VM as bootstrapping
+func (vm *VM) onBootstrapStarted() error {
+	vm.bootstrapped.SetValue(false)
+	return nil
+}
+
+// onNormalOperationsStarted marks this VM as bootstrapped
+func (vm *VM) onNormalOperationsStarted() error {
+	if vm.bootstrapped.GetValue() {
+		return nil
+	}
+	vm.bootstrapped.SetValue(true)
+	return nil
 }
 
 // Returns this VM's version
