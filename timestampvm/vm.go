@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
+	"github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/version"
 )
@@ -59,6 +60,9 @@ type VM struct {
 	// Each element is a block that passed verification but
 	// hasn't yet been accepted/rejected
 	verifiedBlocks map[ids.ID]*Block
+
+	// Indicates that this VM has finised bootstrapping for the chain
+	bootstrapped utils.AtomicBool
 }
 
 // Initialize this vm
@@ -335,11 +339,35 @@ func (vm *VM) SetPreference(id ids.ID) error {
 	return nil
 }
 
-// Bootstrapped marks this VM as bootstrapped
-func (vm *VM) Bootstrapped() error { return nil }
+// SetState sets this VM state according to given snow.State
+func (vm *VM) SetState(state snow.State) error {
+	switch state {
+	// Engine reports it's bootstrapping
+	case snow.Bootstrapping:
+		return vm.onBootstrapStarted()
+	case snow.NormalOp:
+		// Engine reports it can start normal operations
+		return vm.onNormalOperationsStarted()
+	default:
+		return snow.ErrUnknownState
+	}
+}
 
-// Bootstrapping marks this VM as bootstrapping
-func (vm *VM) Bootstrapping() error { return nil }
+// onBootstrapStarted marks this VM as bootstrapping
+func (vm *VM) onBootstrapStarted() error {
+	vm.bootstrapped.SetValue(false)
+	return nil
+}
+
+// onNormalOperationsStarted marks this VM as bootstrapped
+func (vm *VM) onNormalOperationsStarted() error {
+	// No need to set it again
+	if vm.bootstrapped.GetValue() {
+		return nil
+	}
+	vm.bootstrapped.SetValue(true)
+	return nil
+}
 
 // Returns this VM's version
 func (vm *VM) Version() (string, error) {

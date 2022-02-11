@@ -18,14 +18,10 @@ var blockchainID = ids.ID{1, 2, 3}
 
 // Assert that after initialization, the vm has the state we expect
 func TestGenesis(t *testing.T) {
-	// Initialize the vm
-	dbManager := manager.NewMemDB(version.DefaultVersion1_0_0)
-	msgChan := make(chan common.Message, 1)
-	vm := &VM{}
-	ctx := snow.DefaultContextTest()
-	ctx.ChainID = blockchainID
 	assert := assert.New(t)
-	assert.NoError(vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
+	// Initialize the vm
+	vm, _, _, err := newTestVM()
+	assert.NoError(err)
 	// Verify that the db is initialized
 	ok, err := vm.state.IsInitialized()
 	assert.NoError(err)
@@ -47,14 +43,10 @@ func TestGenesis(t *testing.T) {
 }
 
 func TestHappyPath(t *testing.T) {
-	// Initialize the vm
-	dbManager := manager.NewMemDB(version.DefaultVersion1_0_0)
-	msgChan := make(chan common.Message, 1)
-	vm := &VM{}
-	ctx := snow.DefaultContextTest()
-	ctx.ChainID = blockchainID
 	assert := assert.New(t)
-	assert.NoError(vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
+	// Initialize the vm
+	vm, ctx, msgChan, err := newTestVM()
+	assert.NoError(err)
 
 	lastAcceptedID, err := vm.LastAccepted()
 	assert.NoError(err)
@@ -142,12 +134,37 @@ func TestHappyPath(t *testing.T) {
 
 func TestService(t *testing.T) {
 	// Initialize the vm
+	assert := assert.New(t)
+	// Initialize the vm
+	vm, _, _, err := newTestVM()
+	assert.NoError(err)
+	service := Service{vm}
+	assert.NoError(service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
+}
+
+func TestSetState(t *testing.T) {
+	// Initialize the vm
+	assert := assert.New(t)
+	// Initialize the vm
+	vm, _, _, err := newTestVM()
+	assert.NoError(err)
+	// bootstrapping
+	assert.NoError(vm.SetState(snow.Bootstrapping))
+	assert.False(vm.bootstrapped.GetValue())
+	// bootstrapped
+	assert.NoError(vm.SetState(snow.NormalOp))
+	assert.True(vm.bootstrapped.GetValue())
+	// unknown
+	unknownState := snow.State(99)
+	assert.ErrorIs(vm.SetState(unknownState), snow.ErrUnknownState)
+}
+
+func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
 	dbManager := manager.NewMemDB(version.DefaultVersion1_0_0)
 	msgChan := make(chan common.Message, 1)
 	vm := &VM{}
 	ctx := snow.DefaultContextTest()
 	ctx.ChainID = blockchainID
-	assert.NoError(t, vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil))
-	service := Service{vm}
-	assert.NoError(t, service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
+	err := vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	return vm, ctx, msgChan, err
 }
