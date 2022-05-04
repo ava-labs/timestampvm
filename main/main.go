@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashicorp/go-plugin"
 	log "github.com/inconshreveable/log15"
 
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
@@ -27,13 +26,6 @@ func main() {
 	}
 
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stderr, log.TerminalFormat())))
-	plugin.Serve(&plugin.ServeConfig{
-		HandshakeConfig: rpcchainvm.Handshake,
-		Plugins: map[string]plugin.Plugin{
-			"vm": rpcchainvm.New(&timestampvm.VM{}),
-		},
 
-		// A non-nil value here enables gRPC serving for this plugin...
-		GRPCServer: plugin.DefaultGRPCServer,
-	})
+	rpcchainvm.Serve(&timestampvm.VM{})
 }
