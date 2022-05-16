@@ -3,9 +3,8 @@ module github.com/ava-labs/timestampvm
 go 1.17
 
 require (
-	github.com/ava-labs/avalanchego v1.7.7
+	github.com/ava-labs/avalanchego v1.7.10
 	github.com/gorilla/rpc v1.2.0
-	github.com/hashicorp/go-plugin v1.4.3
 	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
@@ -24,7 +23,9 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/hashicorp/go-hclog v1.0.0 // indirect
+	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20200609203250-aecfd211c9ce // indirect
 	github.com/linxGnu/grocksdb v1.6.34 // indirect
