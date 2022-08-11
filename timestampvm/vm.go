@@ -374,7 +374,7 @@ func (vm *VM) Version() (string, error) {
 	return Version.String(), nil
 }
 
-func (vm *VM) Connected(id ids.NodeID, nodeVersion version.Application) error {
+func (vm *VM) Connected(id ids.NodeID, nodeVersion *version.Application) error {
 	return nil // noop
 }
 
