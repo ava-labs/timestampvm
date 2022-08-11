@@ -160,7 +160,11 @@ func TestSetState(t *testing.T) {
 }
 
 func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
-	dbManager := manager.NewMemDB(version.DefaultVersion1_0_0)
+	dbManager := manager.NewMemDB(&version.Semantic{
+		Major: 1,
+		Minor: 0,
+		Patch: 0,
+	})
 	msgChan := make(chan common.Message, 1)
 	vm := &VM{}
 	ctx := snow.DefaultContextTest()

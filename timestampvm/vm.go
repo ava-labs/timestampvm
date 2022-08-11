@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/rpc/v2"
 	log "github.com/inconshreveable/log15"
+	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
@@ -31,7 +32,11 @@ const (
 var (
 	errNoPendingBlocks = errors.New("there is no block to propose")
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
-	Version            = version.NewDefaultVersion(1, 2, 4)
+	Version            = &version.Semantic{
+		Major: 1,
+		Minor: 2,
+		Patch: 6,
+	}
 
 	_ block.ChainVM = &VM{}
 )
@@ -107,7 +112,9 @@ func (vm *VM) Initialize(
 		return err
 	}
 
-	ctx.Log.Info("initializing last accepted block as %s", lastAccepted)
+	ctx.Log.Info("initializing last accepted block",
+		zap.Any("id", lastAccepted),
+	)
 
 	// Build off the most recently accepted block
 	return vm.SetPreference(lastAccepted)
@@ -374,7 +381,7 @@ func (vm *VM) Version() (string, error) {
 	return Version.String(), nil
 }
 
-func (vm *VM) Connected(id ids.NodeID, nodeVersion version.Application) error {
+func (vm *VM) Connected(id ids.NodeID, nodeVersion *version.Application) error {
 	return nil // noop
 }
 
