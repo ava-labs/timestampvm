@@ -35,7 +35,7 @@ var (
 	Version            = &version.Semantic{
 		Major: 1,
 		Minor: 2,
-		Patch: 7,
+		Patch: 8,
 	}
 
 	_ block.ChainVM = &VM{}
@@ -74,7 +74,9 @@ type VM struct {
 // [ctx] is this vm's context
 // [dbManager] is the manager of this vm's database
 // [toEngine] is used to notify the consensus engine that new blocks are
-//   ready to be added to consensus
+//
+//	ready to be added to consensus
+//
 // The data in the genesis block is [genesisData]
 func (vm *VM) Initialize(
 	ctx *snow.Context,
