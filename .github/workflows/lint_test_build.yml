@@ -32,3 +32,22 @@ jobs:
       - name: build_test
         shell: bash
         run: .github/workflows/build_and_test.sh
+
+  e2e-test:
+    name: E2E Test
+    runs on: ubuntu-latest
+    needs: build-test
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - name: Run e2e tests
+        shell: bash
+        run: scripts/run.sh 1.9.2
+        env:
+          E2E: true
