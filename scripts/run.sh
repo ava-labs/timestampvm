@@ -75,57 +75,34 @@ fi
 ############################
 
 ############################
-echo "building blobvm"
+echo "building timestampvm"
 
 # delete previous (if exists)
-rm /tmp/avalanchego-v${VERSION}/plugins/kM6h4LYe3AcEU1MB2UNg6ubzAiDAALZzpVrbX8zn3hXF6Avd8 || true
+rm /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 
 go build \
--o /tmp/avalanchego-v${VERSION}/plugins/kM6h4LYe3AcEU1MB2UNg6ubzAiDAALZzpVrbX8zn3hXF6Avd8 \
-./cmd/blobvm
+-o /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+./cmd/
 find /tmp/avalanchego-v${VERSION}
 
-echo "building blob-cli"
-go build -v -o /tmp/blob-cli ./cmd/blob-cli
 ############################
 
 ############################
 
-# Always create allocations (linter doesn't like tab)
-echo "creating allocations file"
-cat <<EOF > /tmp/allocations.json
-[
-  {"address":"hyper1rvzhmceq997zntgvravfagsks6w0ryud3rylh4cdvayry0dl97nsew79er", "balance":10000000}
-]
+echo "creating genesis file"
+rm -f /tmp/.genesis
+cat <<EOF > /tmp/.genesis
+{}
 EOF
-
-GENESIS_PATH=$2
-if [[ -z "${GENESIS_PATH}" ]]; then
-  echo "creating VM genesis file with allocations"
-  rm -f /tmp/blobvm.genesis
-  /tmp/blob-cli genesis 1 /tmp/allocations.json \
-  --genesis-file /tmp/blobvm.genesis
-else
-  echo "copying custom genesis file"
-  rm -f /tmp/blobvm.genesis
-  cp ${GENESIS_PATH} /tmp/blobvm.genesis
-fi
 
 ############################
 
 ############################
 
 echo "creating vm config"
-rm -f /tmp/blobvm.config
-# build interval == 10ms
-cat <<EOF > /tmp/blobvm.config
+rm -f /tmp/.config
+cat <<EOF > /tmp/.config
 {
-  "buildInterval": 10000000,
-  "gossipTxs": false,
-  "validateSubmitTx": false,
-  "mempoolSize": 10000000,
-  "workerDivisor": 5,
-  "directDB": true
 }
 EOF
 
@@ -134,7 +111,7 @@ EOF
 ############################
 echo "building e2e.test"
 # to install the ginkgo binary (required for test build and run)
-go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.4 || true
+go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 ./tests/e2e/e2e.test --help
 
@@ -144,7 +121,7 @@ ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 ANR_REPO_PATH=github.com/ava-labs/avalanche-network-runner
 ANR_VERSION=e3f5816ca8a7508d359115a9c75e6bcb54a546a8
 # version set
-go install -v ${ANR_REPO_PATH}@${ANR_VERSION} || true
+go install -v ${ANR_REPO_PATH}@${ANR_VERSION}
 
 #################################
 # run "avalanche-network-runner" server
@@ -157,10 +134,9 @@ else
   BIN=${GOBIN}/avalanche-network-runner
 fi
 
-# TODO: add back logs for network runner
 echo "launch avalanche-network-runner in the background"
 $BIN server \
---log-level warn \
+--log-level debug \
 --port=":12342" \
 --disable-grpc-gateway &
 PID=${!}
@@ -176,13 +152,12 @@ echo "running e2e tests"
 --network-runner-grpc-endpoint="0.0.0.0:12342" \
 --avalanchego-path=${AVALANCHEGO_PATH} \
 --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
---vm-genesis-path=/tmp/blobvm.genesis \
---vm-config-path=/tmp/blobvm.config \
+--vm-genesis-path=/tmp/.genesis \
+--vm-config-path=/tmp/.config \
 --output-path=/tmp/avalanchego-v${VERSION}/output.yaml \
 --mode=${MODE}
 
 ############################
-# e.g., print out MetaMask endpoints
 if [[ -f "/tmp/avalanchego-v${VERSION}/output.yaml" ]]; then
   echo "cluster is ready!"
   cat /tmp/avalanchego-v${VERSION}/output.yaml
@@ -197,14 +172,14 @@ if [[ ${MODE} == "test" ]]; then
   # "e2e.test" already terminates the cluster for "test" mode
   # just in case tests are aborted, manually terminate them again
   echo "network-runner RPC server was running on PID ${PID} as test mode; terminating the process..."
-  pkill -P ${PID} || true
+  pkill -P ${PID}
   kill -2 ${PID}
-  pkill -9 -f kM6h4LYe3AcEU1MB2UNg6ubzAiDAALZzpVrbX8zn3hXF6Avd8 || true # in case pkill didn't work
+  pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH # in case pkill didn't work
 else
   echo "network-runner RPC server is running on PID ${PID}..."
   echo ""
   echo "use the following command to terminate:"
   echo ""
-  echo "pkill -P ${PID} && kill -2 ${PID} && pkill -9 -f kM6h4LYe3AcEU1MB2UNg6ubzAiDAALZzpVrbX8zn3hXF6Avd8"
+  echo "pkill -P ${PID} && kill -2 ${PID} && pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
   echo ""
 fi
