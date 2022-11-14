@@ -75,7 +75,9 @@ type VM struct {
 // [ctx] is this vm's context
 // [dbManager] is the manager of this vm's database
 // [toEngine] is used to notify the consensus engine that new blocks are
-//   ready to be added to consensus
+//
+//	ready to be added to consensus
+//
 // The data in the genesis block is [genesisData]
 func (vm *VM) Initialize(
 	ctx *snow.Context,
@@ -184,7 +186,8 @@ func (vm *VM) CreateHandlers() (map[string]*common.HTTPHandler, error) {
 
 	return map[string]*common.HTTPHandler{
 		"": {
-			Handler: server,
+			LockOptions: common.WriteLock,
+			Handler:     server,
 		},
 	}, nil
 }
