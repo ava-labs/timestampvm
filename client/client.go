@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting"
@@ -20,7 +19,7 @@ type Client interface {
 }
 
 // New creates a new client object.
-func New(uri string, reqTimeout time.Duration) Client {
+func New(uri string) Client {
 	req := rpc.NewEndpointRequester(uri)
 	return &client{req: req}
 }

@@ -16,8 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/blobvm/client"
-	"github.com/ava-labs/timestampvm/chain"
+	"github.com/ava-labs/timestampvm/client"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/gomega"
@@ -117,7 +116,7 @@ func init() {
 	)
 }
 
-const vmName = "blobvm"
+const vmName = "timestamp"
 
 var vmID ids.ID
 
@@ -138,8 +137,8 @@ const (
 )
 
 var (
-	cli          runner_sdk.Client
-	blobvmRPCEps []string
+	cli               runner_sdk.Client
+	timestampvmRPCEps []string
 )
 
 var _ = ginkgo.BeforeSuite(func() {
@@ -175,8 +174,9 @@ var _ = ginkgo.BeforeSuite(func() {
 					},
 				},
 			),
+			// Disable all rate limiting
 			runner_sdk.WithGlobalNodeConfig(`{
-				"log-level":"warn",
+				"log-level":"debug",
 				"throttler-inbound-validator-alloc-size":"107374182",
 				"throttler-inbound-node-max-processing-msgs":"100000",
 				"throttler-inbound-bandwidth-refill-rate":"1073741824",
@@ -206,7 +206,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		break
 	}
 
-	blobvmRPCEps = make([]string, 0)
+	timestampvmRPCEps = make([]string, 0)
 	blockchainID, logsDir := "", ""
 
 	// wait up to 5-minute for custom VM installation
@@ -251,8 +251,8 @@ done:
 
 	for _, u := range uris {
 		rpcEP := fmt.Sprintf("%s/ext/bc/%s/rpc", u, blockchainID)
-		blobvmRPCEps = append(blobvmRPCEps, rpcEP)
-		outf("{{blue}}avalanche blobvm RPC:{{/}} %q\n", rpcEP)
+		timestampvmRPCEps = append(timestampvmRPCEps, rpcEP)
+		outf("{{blue}}avalanche timestampvm RPC:{{/}} %q\n", rpcEP)
 	}
 
 	pid := os.Getpid()
@@ -269,12 +269,6 @@ done:
 	gomega.Expect(err).Should(gomega.BeNil())
 	outf("\n{{blue}}$ cat %s:{{/}}\n%s\n", outputPath, string(b))
 
-	priv, err = chain.HexToKey("323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7")
-	gomega.Ω(err).Should(gomega.BeNil())
-	rsender = priv.PublicKey()
-	sender = chain.Address(rsender)
-	outf("\n{{yellow}}$ loaded address %s:{{/}}\n", sender)
-
 	instances = make([]instance, len(uris))
 	for i := range uris {
 		u := uris[i] + fmt.Sprintf("/ext/bc/%s", blockchainID)
@@ -283,18 +277,10 @@ done:
 			cli: client.New(u),
 		}
 	}
-	genesis, err = instances[0].cli.Genesis(context.Background())
-	gomega.Ω(err).Should(gomega.BeNil())
 })
 
 var (
-	priv    chain.PrivateKey
-	rsender chain.PublicKey
-	sender  string
-
 	instances []instance
-
-	genesis *chain.Genesis
 )
 
 type instance struct {
@@ -319,84 +305,48 @@ var _ = ginkgo.AfterSuite(func() {
 	gomega.Expect(cli.Close()).Should(gomega.BeNil())
 })
 
-var _ = ginkgo.Describe("[Ping]", func() {
-	ginkgo.It("can ping", func() {
-		for _, inst := range instances {
-			cli := inst.cli
-			ok, err := cli.Ping(context.Background())
-			gomega.Ω(ok).Should(gomega.BeTrue())
-			gomega.Ω(err).Should(gomega.BeNil())
-		}
-	})
-})
-
-var _ = ginkgo.Describe("[Network]", func() {
-	ginkgo.It("can get network", func() {
-		for _, inst := range instances {
-			cli := inst.cli
-			networkID, _, chainID, err := cli.Network(context.Background())
-			gomega.Ω(networkID).Should(gomega.Equal(uint32(1337)))
-			gomega.Ω(chainID).ShouldNot(gomega.Equal(ids.Empty))
-			gomega.Ω(err).Should(gomega.BeNil())
-		}
-	})
-})
-
-var _ = ginkgo.Describe("[TransferTx]", func() {
+var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	switch mode {
 	case modeRun:
-		outf("{{yellow}}skipping TransferTx tests{{/}}\n")
+		outf("{{yellow}}skipping ProposeBlock tests{{/}}\n")
 		return
 	}
 
 	ginkgo.It("get currently accepted block ID", func() {
 		for _, inst := range instances {
 			cli := inst.cli
-			_, err := cli.Accepted(context.Background())
+			_, _, _, _, _, err := cli.GetBlock(context.Background(), nil)
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
 	})
 
-	ginkgo.It("TransferTx in a single node (raw)", func() {
-		ginkgo.By("issue TransferTx to the first node", func() {
-			other, err := chain.GeneratePrivateKey()
-			gomega.Ω(err).Should(gomega.BeNil())
+	// ginkgo.It("TransferTx in a single node (raw)", func() {
+	// 	ginkgo.By("issue TransferTx to the first node", func() {
+	// 		other, err := chain.GeneratePrivateKey()
+	// 		gomega.Ω(err).Should(gomega.BeNil())
 
-			setTx := &chain.TransferTx{
-				BaseTx: &chain.BaseTx{},
-				To:     other.PublicKey(),
-				Value:  10,
-			}
+	// 		setTx := &chain.TransferTx{
+	// 			BaseTx: &chain.BaseTx{},
+	// 			To:     other.PublicKey(),
+	// 			Value:  10,
+	// 		}
 
-			balance, err := instances[0].cli.Balance(context.Background(), sender)
-			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(balance).Should(gomega.Equal(uint64(10000000)))
+	// 		balance, err := instances[0].cli.Balance(context.Background(), sender)
+	// 		gomega.Ω(err).Should(gomega.BeNil())
+	// 		gomega.Ω(balance).Should(gomega.Equal(uint64(10000000)))
 
-			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-			_, _, err = client.SignIssueRawTx(
-				ctx,
-				instances[0].cli,
-				setTx,
-				priv,
-				client.WithPollTx(),
-			)
-			cancel()
-			gomega.Ω(err).Should(gomega.BeNil())
-		})
-
-		// TODO: find way to track txs
-		// ginkgo.By("check if TransferTx has been accepted from all nodes", func() {
-		// 	// enough time to be propagated to all nodes
-		// 	time.Sleep(5 * time.Second)
-
-		// 	for _, inst := range instances {
-		// 		color.Blue("checking %q", inst.uri)
-		// 		nonce, err := inst.cli.Nonce(context.Background(), sender)
-		// 		gomega.Ω(err).To(gomega.BeNil())
-		// 		gomega.Ω(nonce).Should(gomega.Equal(uint64(1)))
-		// 	}
-		// })
-	})
+	// 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	// 		_, _, err = client.SignIssueRawTx(
+	// 			ctx,
+	// 			instances[0].cli,
+	// 			setTx,
+	// 			priv,
+	// 			client.WithPollTx(),
+	// 		)
+	// 		cancel()
+	// 		gomega.Ω(err).Should(gomega.BeNil())
+	// 	})
+	// })
 })
 
 // Outputs to stdout.

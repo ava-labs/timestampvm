@@ -78,11 +78,11 @@ fi
 echo "building timestampvm"
 
 # delete previous (if exists)
-rm /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
+rm -f /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 
 go build \
 -o /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
-./cmd/
+./main/
 find /tmp/avalanchego-v${VERSION}
 
 ############################
@@ -148,7 +148,7 @@ PID=${!}
 echo "running e2e tests"
 ./tests/e2e/e2e.test \
 --ginkgo.v \
---network-runner-log-level warn \
+--network-runner-log-level info \
 --network-runner-grpc-endpoint="0.0.0.0:12342" \
 --avalanchego-path=${AVALANCHEGO_PATH} \
 --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
