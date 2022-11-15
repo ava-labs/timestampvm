@@ -57,7 +57,7 @@ func TestHappyPath(t *testing.T) {
 	assert.NoError(vm.SetPreference(genesisBlock.ID()))
 
 	ctx.Lock.Lock()
-	vm.proposeBlock([dataLen]byte{0, 0, 0, 0, 1}) // propose a value
+	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 1}) // propose a value
 	ctx.Lock.Unlock()
 
 	select { // assert there is a pending tx message to the engine
@@ -85,11 +85,11 @@ func TestHappyPath(t *testing.T) {
 
 	// Assert the block we accepted has the data we expect
 	assert.Equal(genesisBlock.ID(), block2.Parent())
-	assert.Equal([dataLen]byte{0, 0, 0, 0, 1}, block2.Data())
+	assert.Equal([DataLen]byte{0, 0, 0, 0, 1}, block2.Data())
 	assert.Equal(snowmanBlock2.ID(), block2.ID())
 	assert.NoError(block2.Verify())
 
-	vm.proposeBlock([dataLen]byte{0, 0, 0, 0, 2}) // propose a block
+	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 2}) // propose a block
 	ctx.Lock.Unlock()
 
 	select { // verify there is a pending tx message to the engine
@@ -116,7 +116,7 @@ func TestHappyPath(t *testing.T) {
 
 	// Assert the block we accepted has the data we expect
 	assert.Equal(snowmanBlock2.ID(), block3.Parent())
-	assert.Equal([dataLen]byte{0, 0, 0, 0, 2}, block3.Data())
+	assert.Equal([DataLen]byte{0, 0, 0, 0, 2}, block3.Data())
 	assert.Equal(snowmanBlock3.ID(), block3.ID())
 	assert.NoError(block3.Verify())
 

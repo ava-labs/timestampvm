@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	errBadData               = errors.New("data must be base 58 repr. of 32 bytes")
+	errBadData               = errors.New("data must be hex representation of 32 bytes")
 	errNoSuchBlock           = errors.New("couldn't get block from database. Does it exist?")
 	errCannotGetLastAccepted = errors.New("problem getting last accepted")
 )
@@ -23,7 +23,7 @@ type Service struct{ vm *VM }
 
 // ProposeBlockArgs are the arguments to function ProposeValue
 type ProposeBlockArgs struct {
-	// Data in the block. Must be base 58 encoding of 32 bytes.
+	// Data in the block. Must be hex encoding of 32 bytes.
 	Data string `json:"data"`
 }
 
@@ -34,12 +34,10 @@ type ProposeBlockReply struct{ Success bool }
 // [args].Data must be a string repr. of a 32 byte array
 func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *ProposeBlockReply) error {
 	bytes, err := formatting.Decode(formatting.Hex, args.Data)
-	if err != nil || len(bytes) != dataLen {
+	if err != nil || len(bytes) != DataLen {
 		return errBadData
 	}
-	var data [dataLen]byte         // The data as an array of bytes
-	copy(data[:], bytes[:dataLen]) // Copy the bytes in dataSlice to data
-	s.vm.proposeBlock(data)
+	s.vm.proposeBlock(BytesToData(bytes))
 	reply.Success = true
 	return nil
 }
@@ -53,10 +51,11 @@ type GetBlockArgs struct {
 
 // GetBlockReply is the reply from GetBlock
 type GetBlockReply struct {
-	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of most recent block
-	Data      string      `json:"data"`      // Data in the most recent block. Base 58 repr. of 5 bytes.
-	ID        ids.ID      `json:"id"`        // String repr. of ID of the most recent block
-	ParentID  ids.ID      `json:"parentID"`  // String repr. of ID of the most recent block's parent
+	Timestamp json.Uint64 `json:"timestamp"` // Timestamp of block
+	Data      string      `json:"data"`      // Data (hex-encoded) in block
+	Height    json.Uint64 `json:"height"`    // Height of block
+	ID        ids.ID      `json:"id"`        // String repr. of ID of block
+	ParentID  ids.ID      `json:"parentID"`  // String repr. of ID of block's parent
 }
 
 // GetBlock gets the block whose ID is [args.ID]
@@ -85,11 +84,12 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	}
 
 	// Fill out the response with the block's data
-	reply.ID = block.ID()
 	reply.Timestamp = json.Uint64(block.Timestamp().Unix())
-	reply.ParentID = block.Parent()
 	data := block.Data()
 	reply.Data, err = formatting.Encode(formatting.Hex, data[:])
+	reply.Height = json.Uint64(block.Hght)
+	reply.ID = block.ID()
+	reply.ParentID = block.Parent()
 
 	return err
 }

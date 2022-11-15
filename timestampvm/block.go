@@ -32,7 +32,7 @@ type Block struct {
 	PrntID ids.ID        `serialize:"true" json:"parentID"`  // parent's ID
 	Hght   uint64        `serialize:"true" json:"height"`    // This block's height. The genesis block is at height 0.
 	Tmstmp int64         `serialize:"true" json:"timestamp"` // Time this block was proposed at
-	Dt     [dataLen]byte `serialize:"true" json:"data"`      // Arbitrary data
+	Dt     [DataLen]byte `serialize:"true" json:"data"`      // Arbitrary data
 
 	id     ids.ID         // hold this block's ID
 	bytes  []byte         // this block's encoded bytes
@@ -141,7 +141,7 @@ func (b *Block) Status() choices.Status { return b.status }
 func (b *Block) Bytes() []byte { return b.bytes }
 
 // Data returns the data of this block
-func (b *Block) Data() [dataLen]byte { return b.Dt }
+func (b *Block) Data() [DataLen]byte { return b.Dt }
 
 // SetStatus sets the status of this block
 func (b *Block) SetStatus(status choices.Status) { b.status = status }

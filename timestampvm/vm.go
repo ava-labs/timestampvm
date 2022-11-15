@@ -1,4 +1,4 @@
-// (c) 2019-2020, Ava Labs, Inc. All rights reserved.
+// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	dataLen = 32
+	DataLen = 32
 	Name    = "timestampvm"
 )
 
@@ -36,7 +36,7 @@ var (
 	Version            = &version.Semantic{
 		Major: 1,
 		Minor: 2,
-		Patch: 8,
+		Patch: 9,
 	}
 
 	_ block.ChainVM = &VM{}
@@ -60,7 +60,7 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool [][dataLen]byte
+	mempool [][DataLen]byte
 
 	// Block ID --> Block
 	// Each element is a block that passed verification but
@@ -75,7 +75,9 @@ type VM struct {
 // [ctx] is this vm's context
 // [dbManager] is the manager of this vm's database
 // [toEngine] is used to notify the consensus engine that new blocks are
-//   ready to be added to consensus
+//
+//	ready to be added to consensus
+//
 // The data in the genesis block is [genesisData]
 func (vm *VM) Initialize(
 	ctx *snow.Context,
@@ -133,14 +135,14 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return nil
 	}
 
-	if len(genesisData) > dataLen {
+	if len(genesisData) > DataLen {
 		return errBadGenesisBytes
 	}
 
 	// genesisData is a byte slice but each block contains an byte array
-	// Take the first [dataLen] bytes from genesisData and put them in an array
-	var genesisDataArr [dataLen]byte
-	copy(genesisDataArr[:], genesisData)
+	// Take the first [DataLen] bytes from genesisData and put them in an array
+	genesisDataArr := BytesToData(genesisData)
+	log.Debug("genesis", "data", genesisDataArr)
 
 	// Create the genesis block
 	// Timestamp of genesis block is 0. It has no parent.
@@ -184,7 +186,8 @@ func (vm *VM) CreateHandlers() (map[string]*common.HTTPHandler, error) {
 
 	return map[string]*common.HTTPHandler{
 		"": {
-			Handler: server,
+			LockOptions: common.WriteLock,
+			Handler:     server,
 		},
 	}, nil
 }
@@ -276,7 +279,7 @@ func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted()
 // Then it notifies the consensus engine
 // that a new block is ready to be added to consensus
 // (namely, a block with data [data])
-func (vm *VM) proposeBlock(data [dataLen]byte) {
+func (vm *VM) proposeBlock(data [DataLen]byte) {
 	vm.mempool = append(vm.mempool, data)
 	vm.NotifyBlockReady()
 }
@@ -312,7 +315,7 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's parent is [parentID]
 // - the block's data is [data]
 // - the block's timestamp is [timestamp]
-func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
+func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [DataLen]byte, timestamp time.Time) (*Block, error) {
 	block := &Block{
 		PrntID: parentID,
 		Hght:   height,
