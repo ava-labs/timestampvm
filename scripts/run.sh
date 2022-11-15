@@ -156,6 +156,7 @@ echo "running e2e tests"
 --vm-config-path=/tmp/.config \
 --output-path=/tmp/avalanchego-v${VERSION}/output.yaml \
 --mode=${MODE}
+STATUS=$?
 
 ############################
 if [[ -f "/tmp/avalanchego-v${VERSION}/output.yaml" ]]; then
@@ -172,9 +173,10 @@ if [[ ${MODE} == "test" ]]; then
   # "e2e.test" already terminates the cluster for "test" mode
   # just in case tests are aborted, manually terminate them again
   echo "network-runner RPC server was running on PID ${PID} as test mode; terminating the process..."
-  pkill -P ${PID}
-  kill -2 ${PID}
-  pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH # in case pkill didn't work
+  pkill -P ${PID} || true
+  kill -2 ${PID} || true
+  pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH || true # in case pkill didn't work
+  exit ${STATUS}
 else
   echo "network-runner RPC server is running on PID ${PID}..."
   echo ""
