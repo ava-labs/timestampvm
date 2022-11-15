@@ -143,6 +143,7 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 	// Take the first [dataLen] bytes from genesisData and put them in an array
 	var genesisDataArr [dataLen]byte
 	copy(genesisDataArr[:], genesisData)
+	log.Debug("genesis", "data", genesisDataArr)
 
 	// Create the genesis block
 	// Timestamp of genesis block is 0. It has no parent.

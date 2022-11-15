@@ -312,10 +312,13 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 		return
 	}
 
-	ginkgo.It("get currently accepted block ID", func() {
+	ginkgo.It("get genesis block", func() {
 		for _, inst := range instances {
 			cli := inst.cli
-			_, _, _, _, _, err := cli.GetBlock(context.Background(), nil)
+			timestamp, data, height, _, _, err := cli.GetBlock(context.Background(), nil)
+			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
+			gomega.Ω(data[:3]).Should(gomega.Equal([]byte("e2e")))
+			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
 	})

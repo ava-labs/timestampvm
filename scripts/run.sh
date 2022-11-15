@@ -91,9 +91,7 @@ find /tmp/avalanchego-v${VERSION}
 
 echo "creating genesis file"
 rm -f /tmp/.genesis
-cat <<EOF > /tmp/.genesis
-{}
-EOF
+echo -n "e2e" >> /tmp/.genesis
 
 ############################
 
@@ -102,8 +100,7 @@ EOF
 echo "creating vm config"
 rm -f /tmp/.config
 cat <<EOF > /tmp/.config
-{
-}
+{}
 EOF
 
 ############################
