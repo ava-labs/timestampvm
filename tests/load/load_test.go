@@ -256,6 +256,8 @@ done:
 			cli: client.New(u),
 		}
 	}
+
+	defer outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
 })
 
 var _ = ginkgo.AfterSuite(func() {
@@ -324,6 +326,7 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			}
 			return gctx.Err()
 		})
+		log.Warn("exiting producer loop", "err", g.Wait())
 	})
 })
 
