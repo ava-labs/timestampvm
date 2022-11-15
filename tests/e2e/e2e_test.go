@@ -282,9 +282,7 @@ done:
 	}
 })
 
-var (
-	instances []instance
-)
+var instances []instance
 
 type instance struct {
 	uri string
