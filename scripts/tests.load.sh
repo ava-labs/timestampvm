@@ -11,10 +11,10 @@ set -e
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 # e.g.,
-# ./scripts/tests.load.sh 1.7.13
+# ./scripts/tests.load.sh /tmp/avalanchego
 #
 # run without e2e tests
-# ./scripts/tests.load.sh 1.7.13
+# ./scripts/tests.load.sh /tmp/avalanchego
 #
 # to run E2E tests (terminates cluster afterwards)
 # E2E=true ./scripts/tests.load.sh 1.7.13
@@ -23,80 +23,48 @@ if ! [[ "$0" =~ scripts/tests.load.sh ]]; then
   exit 255
 fi
 
-VERSION=$1
-if [[ -z "${VERSION}" ]]; then
-  echo "Missing version argument!"
-  echo "Usage: ${0} [VERSION]" >> /dev/stderr
+AVALANCHEGO_PATH=$1
+if [[ -z "${AVALANCHEGO_PATH}" ]]; then
+  echo "Missing avalanchego argument!"
+  echo "Usage: ${0} [AVALANCHEGO_PATH]" >> /dev/stderr
   exit 255
 fi
 
-AVALANCHE_LOG_LEVEL=${AVALANCHE_LOG_LEVEL:-INFO}
-
-echo "Running with:"
-echo VERSION: ${VERSION}
-echo MODE: ${MODE}
-
 ############################
-# download avalanchego
-# https://github.com/ava-labs/avalanchego/releases
-GOARCH=$(go env GOARCH)
-GOOS=$(go env GOOS)
-AVALANCHEGO_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
-AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-v${VERSION}/plugins
-
-if [ ! -f "$AVALANCHEGO_PATH" ]; then
-  DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-linux-${GOARCH}-v${VERSION}.tar.gz
-  DOWNLOAD_PATH=/tmp/avalanchego.tar.gz
-  if [[ ${GOOS} == "darwin" ]]; then
-    DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-macos-v${VERSION}.zip
-    DOWNLOAD_PATH=/tmp/avalanchego.zip
-  fi
-
-  rm -rf /tmp/avalanchego-v${VERSION}
-  rm -rf /tmp/avalanchego-build
-  rm -f ${DOWNLOAD_PATH}
-
-  echo "downloading avalanchego ${VERSION} at ${DOWNLOAD_URL}"
-  curl -L ${DOWNLOAD_URL} -o ${DOWNLOAD_PATH}
-
-  echo "extracting downloaded avalanchego"
-  if [[ ${GOOS} == "linux" ]]; then
-    tar xzvf ${DOWNLOAD_PATH} -C /tmp
-  elif [[ ${GOOS} == "darwin" ]]; then
-    unzip ${DOWNLOAD_PATH} -d /tmp/avalanchego-build
-    mv /tmp/avalanchego-build/build /tmp/avalanchego-v${VERSION}
-  fi
-  find /tmp/avalanchego-v${VERSION}
-fi
-
-############################
+echo "copying avalanchego"
+LOAD_PATH=/tmp/timestampvm-load
+rm -rf ${LOAD_PATH}
+mkdir ${LOAD_PATH}
+cp ${AVALANCHEGO_PATH} ${LOAD_PATH}
 
 ############################
 echo "building timestampvm"
+GOARCH=$(go env GOARCH)
+GOOS=$(go env GOOS)
+LOAD_PLUGIN_DIR=${LOAD_PATH}/plugins
 
 # delete previous (if exists)
-rm -f /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
+rm -f ${LOAD_PLUGIN_DIR}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 
 go build \
--o /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+-o ${LOAD_PLUGIN_DIR}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
 ./main/
-find /tmp/avalanchego-v${VERSION}
+
 
 ############################
+echo "updating perms"
+chmod -R 755 ${LOAD_PATH}
 
 ############################
-
 echo "creating genesis file"
-rm -f /tmp/.genesis
-echo -n "e2e" >> /tmp/.genesis
+echo -n "e2e" >> ${LOAD_PATH}/.genesis
 
 ############################
 
 ############################
 
 echo "creating vm config"
-rm -f /tmp/.config
-cat <<EOF > /tmp/.config
+cat <<EOF > ${LOAD_PATH}/.config
 {}
 EOF
 
@@ -129,7 +97,7 @@ fi
 
 echo "launch avalanche-network-runner in the background"
 $BIN server \
---log-level debug \
+--log-level warn \
 --port=":12342" \
 --disable-grpc-gateway &
 PID=${!}
@@ -141,12 +109,12 @@ PID=${!}
 echo "running load tests"
 ./tests/load/load.test \
 --ginkgo.v \
---network-runner-log-level info \
+--network-runner-log-level warn \
 --network-runner-grpc-endpoint="0.0.0.0:12342" \
---avalanchego-path=${AVALANCHEGO_PATH} \
---avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
---vm-genesis-path=/tmp/.genesis \
---vm-config-path=/tmp/.config
+--avalanchego-path=${LOAD_PATH}/avalanchego \
+--avalanchego-plugin-dir=${LOAD_PLUGIN_DIR} \
+--vm-genesis-path=${LOAD_PATH}/.genesis \
+--vm-config-path=${LOAD_PATH}/.config
 
 ############################
 # load.test" already terminates the cluster
