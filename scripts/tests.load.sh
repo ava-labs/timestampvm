@@ -114,7 +114,8 @@ echo "running load tests"
 --avalanchego-path=${LOAD_PATH}/avalanchego \
 --avalanchego-plugin-dir=${LOAD_PLUGIN_DIR} \
 --vm-genesis-path=${LOAD_PATH}/.genesis \
---vm-config-path=${LOAD_PATH}/.config
+--vm-config-path=${LOAD_PATH}/.config \
+--terminal-height=1000000
 
 ############################
 # load.test" already terminates the cluster

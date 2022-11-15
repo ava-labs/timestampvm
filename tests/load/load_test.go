@@ -6,6 +6,7 @@ package load_test
 
 import (
 	"context"
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/timestampvm/client"
 	"github.com/ava-labs/timestampvm/timestampvm"
@@ -22,6 +22,7 @@ import (
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/gomega"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestLoad(t *testing.T) {
@@ -41,6 +42,8 @@ var (
 
 	vmGenesisPath string
 	vmConfigPath  string
+
+	terminalHeight uint64
 )
 
 func init() {
@@ -98,6 +101,13 @@ func init() {
 		"",
 		"VM configfile path",
 	)
+
+	flag.Uint64Var(
+		&terminalHeight,
+		"terminal-height",
+		1_000_000,
+		"height to quit at",
+	)
 }
 
 const vmName = "timestamp"
@@ -115,15 +125,16 @@ func init() {
 	}
 }
 
-const (
-	modeTest = "test"
-	modeRun  = "run"
-)
-
 var (
 	cli               runner_sdk.Client
 	timestampvmRPCEps []string
+	instances         []instance
 )
+
+type instance struct {
+	uri string
+	cli client.Client
+}
 
 var _ = ginkgo.BeforeSuite(func() {
 	logLevel, err := logging.ToLevel(networkRunnerLogLevel)
@@ -203,7 +214,6 @@ done:
 		case <-time.After(5 * time.Second):
 		}
 
-		outf("{{magenta}}checking custom VM status{{/}}\n")
 		cctx, ccancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		resp, err := cli.Status(cctx)
 		ccancel()
@@ -215,7 +225,7 @@ done:
 		for _, v := range resp.ClusterInfo.CustomChains {
 			if v.VmId == vmID.String() {
 				blockchainID = v.ChainId
-				outf("{{blue}}spacesvm is ready:{{/}} %+v\n", v)
+				outf("{{blue}}timestampvm is ready:{{/}} %+v\n", v)
 				break done
 			}
 		}
@@ -248,13 +258,6 @@ done:
 	}
 })
 
-var instances []instance
-
-type instance struct {
-	uri string
-	cli client.Client
-}
-
 var _ = ginkgo.AfterSuite(func() {
 	outf("{{red}}shutting down cluster{{/}}\n")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -270,12 +273,10 @@ var _ = ginkgo.AfterSuite(func() {
 })
 
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
-	var gid ids.ID
 	ginkgo.It("get genesis block", func() {
 		for _, inst := range instances {
 			cli := inst.cli
-			timestamp, data, height, id, _, err := cli.GetBlock(context.Background(), nil)
-			gid = id
+			timestamp, data, height, _, _, err := cli.GetBlock(context.Background(), nil)
 			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
 			gomega.Ω(data).Should(gomega.Equal(timestampvm.BytesToData([]byte("e2e"))))
 			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
@@ -283,34 +284,46 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 		}
 	})
 
-	data := timestampvm.BytesToData(hashing.ComputeHash256([]byte("test")))
-	now := time.Now().Unix()
-	ginkgo.It("create new block", func() {
-		cli := instances[0].cli
-		success, err := cli.ProposeBlock(context.Background(), data)
-		gomega.Ω(success).Should(gomega.BeTrue())
-		gomega.Ω(err).Should(gomega.BeNil())
-	})
+	ginkgo.It("create new blocks", func() {
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		g, gctx := errgroup.WithContext(ctx)
+		for _, instance := range instances {
+			cli := instance.cli
+			g.Go(func() error {
+				defer ginkgo.GinkgoRecover()
 
-	ginkgo.It("confirm block processed on all nodes", func() {
-		for i, inst := range instances {
-			cli := inst.cli
-			for { // Wait for block to be accepted
-				timestamp, bdata, height, _, pid, err := cli.GetBlock(context.Background(), nil)
-				if height == 0 {
-					log.Info("waiting for height to increase", "instance", i)
-					time.Sleep(1 * time.Second)
+				for gctx.Err() == nil {
+					data := [timestampvm.DataLen]byte{}
+					_, err := rand.Read(data[:])
+					gomega.Ω(err).Should(gomega.BeNil())
+					success, err := cli.ProposeBlock(context.Background(), data)
+					gomega.Ω(err).Should(gomega.BeNil())
+					gomega.Ω(success).Should(gomega.BeTrue())
+				}
+				return gctx.Err()
+			})
+		}
+		start := time.Now()
+		g.Go(func() error {
+			defer ginkgo.GinkgoRecover()
+
+			cli := instances[0].cli
+			for gctx.Err() == nil {
+				_, _, lastHeight, _, _, err := cli.GetBlock(gctx, nil)
+				if err != nil {
 					continue
 				}
-				gomega.Ω(uint64(now)-5 < timestamp).Should(gomega.BeTrue())
-				gomega.Ω(bdata).Should(gomega.Equal(data))
-				gomega.Ω(height).Should(gomega.Equal(uint64(1)))
-				gomega.Ω(pid).Should(gomega.Equal(gid))
-				gomega.Ω(err).Should(gomega.BeNil())
-				log.Info("height increased", "instance", i)
-				break
+				log.Info("performance", "height", lastHeight, "bps", float64(lastHeight)/time.Since(start).Seconds())
+				if lastHeight > terminalHeight {
+					log.Info("exiting at terminal height")
+					cancel()
+					return nil
+				}
+				time.Sleep(3 * time.Second)
 			}
-		}
+			return gctx.Err()
+		})
 	})
 })
 

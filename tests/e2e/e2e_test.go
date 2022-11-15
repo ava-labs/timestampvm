@@ -223,7 +223,6 @@ done:
 		case <-time.After(5 * time.Second):
 		}
 
-		outf("{{magenta}}checking custom VM status{{/}}\n")
 		cctx, ccancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		resp, err := cli.Status(cctx)
 		ccancel()
@@ -235,7 +234,7 @@ done:
 		for _, v := range resp.ClusterInfo.CustomChains {
 			if v.VmId == vmID.String() {
 				blockchainID = v.ChainId
-				outf("{{blue}}spacesvm is ready:{{/}} %+v\n", v)
+				outf("{{blue}}timestampvm is ready:{{/}} %+v\n", v)
 				break done
 			}
 		}
