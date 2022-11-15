@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/timestampvm/client"
+	"github.com/ava-labs/timestampvm/timestampvm"
 	log "github.com/inconshreveable/log15"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
@@ -321,13 +322,13 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			timestamp, data, height, id, _, err := cli.GetBlock(context.Background(), nil)
 			gid = id
 			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
-			gomega.Ω(data[:3]).Should(gomega.Equal([]byte("e2e")))
+			gomega.Ω(data).Should(gomega.Equal(timestampvm.BytesToData([]byte("e2e"))))
 			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
 	})
 
-	data := hashing.ComputeHash256([]byte("test"))
+	data := timestampvm.BytesToData(hashing.ComputeHash256([]byte("test")))
 	now := time.Now().Unix()
 	ginkgo.It("create new block", func() {
 		cli := instances[0].cli

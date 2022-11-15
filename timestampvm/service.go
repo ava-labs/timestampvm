@@ -34,12 +34,10 @@ type ProposeBlockReply struct{ Success bool }
 // [args].Data must be a string repr. of a 32 byte array
 func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *ProposeBlockReply) error {
 	bytes, err := formatting.Decode(formatting.Hex, args.Data)
-	if err != nil || len(bytes) != dataLen {
+	if err != nil || len(bytes) != DataLen {
 		return errBadData
 	}
-	var data [dataLen]byte         // The data as an array of bytes
-	copy(data[:], bytes[:dataLen]) // Copy the bytes in dataSlice to data
-	s.vm.proposeBlock(data)
+	s.vm.proposeBlock(BytesToData(bytes))
 	reply.Success = true
 	return nil
 }

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	dataLen = 32
+	DataLen = 32
 	Name    = "timestampvm"
 )
 
@@ -60,7 +60,7 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool [][dataLen]byte
+	mempool [][DataLen]byte
 
 	// Block ID --> Block
 	// Each element is a block that passed verification but
@@ -135,14 +135,13 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 		return nil
 	}
 
-	if len(genesisData) > dataLen {
+	if len(genesisData) > DataLen {
 		return errBadGenesisBytes
 	}
 
 	// genesisData is a byte slice but each block contains an byte array
-	// Take the first [dataLen] bytes from genesisData and put them in an array
-	var genesisDataArr [dataLen]byte
-	copy(genesisDataArr[:], genesisData)
+	// Take the first [DataLen] bytes from genesisData and put them in an array
+	genesisDataArr := BytesToData(genesisData)
 	log.Debug("genesis", "data", genesisDataArr)
 
 	// Create the genesis block
@@ -280,7 +279,7 @@ func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted()
 // Then it notifies the consensus engine
 // that a new block is ready to be added to consensus
 // (namely, a block with data [data])
-func (vm *VM) proposeBlock(data [dataLen]byte) {
+func (vm *VM) proposeBlock(data [DataLen]byte) {
 	vm.mempool = append(vm.mempool, data)
 	vm.NotifyBlockReady()
 }
@@ -316,7 +315,7 @@ func (vm *VM) ParseBlock(bytes []byte) (snowman.Block, error) {
 // - the block's parent is [parentID]
 // - the block's data is [data]
 // - the block's timestamp is [timestamp]
-func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [dataLen]byte, timestamp time.Time) (*Block, error) {
+func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [DataLen]byte, timestamp time.Time) (*Block, error) {
 	block := &Block{
 		PrntID: parentID,
 		Hght:   height,
