@@ -307,12 +307,6 @@ var _ = ginkgo.AfterSuite(func() {
 })
 
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
-	switch mode {
-	case modeRun:
-		outf("{{yellow}}skipping ProposeBlock tests{{/}}\n")
-		return
-	}
-
 	var gid ids.ID
 	ginkgo.It("get genesis block", func() {
 		for _, inst := range instances {
@@ -325,6 +319,12 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
 	})
+
+	switch mode {
+	case modeRun:
+		outf("{{yellow}}skipping ProposeBlock tests{{/}}\n")
+		return
+	}
 
 	data := timestampvm.BytesToData(hashing.ComputeHash256([]byte("test")))
 	now := time.Now().Unix()
