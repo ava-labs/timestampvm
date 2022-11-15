@@ -297,13 +297,16 @@ var _ = ginkgo.AfterSuite(func() {
 		_, err := cli.Stop(ctx)
 		cancel()
 		gomega.Expect(err).Should(gomega.BeNil())
+		log.Warn("cluster shutdown result", "err", err)
 
 	case modeRun:
 		outf("{{yellow}}skipping shutting down cluster{{/}}\n")
 	}
 
 	outf("{{red}}shutting down client{{/}}\n")
-	gomega.Expect(cli.Close()).Should(gomega.BeNil())
+	err := cli.Close()
+	gomega.Expect(err).Should(gomega.BeNil())
+	log.Warn("client shutdown result", "err", err)
 })
 
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
@@ -355,34 +358,6 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			}
 		}
 	})
-
-	// ginkgo.It("TransferTx in a single node (raw)", func() {
-	// 	ginkgo.By("issue TransferTx to the first node", func() {
-	// 		other, err := chain.GeneratePrivateKey()
-	// 		gomega.Ω(err).Should(gomega.BeNil())
-
-	// 		setTx := &chain.TransferTx{
-	// 			BaseTx: &chain.BaseTx{},
-	// 			To:     other.PublicKey(),
-	// 			Value:  10,
-	// 		}
-
-	// 		balance, err := instances[0].cli.Balance(context.Background(), sender)
-	// 		gomega.Ω(err).Should(gomega.BeNil())
-	// 		gomega.Ω(balance).Should(gomega.Equal(uint64(10000000)))
-
-	// 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	// 		_, _, err = client.SignIssueRawTx(
-	// 			ctx,
-	// 			instances[0].cli,
-	// 			setTx,
-	// 			priv,
-	// 			client.WithPollTx(),
-	// 		)
-	// 		cancel()
-	// 		gomega.Ω(err).Should(gomega.BeNil())
-	// 	})
-	// })
 })
 
 // Outputs to stdout.
