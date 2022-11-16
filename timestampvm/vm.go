@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	DataLen = 32
-	Name    = "timestampvm"
+	DataLen        = 32
+	Name           = "timestampvm"
+	MaxMempoolSize = 1024
 )
 
 var (
@@ -60,7 +61,8 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool [][DataLen]byte
+	mempool          [][DataLen]byte
+	mempoolAdditions int
 
 	// Block ID --> Block
 	// Each element is a block that passed verification but
@@ -279,9 +281,13 @@ func (vm *VM) LastAccepted() (ids.ID, error) { return vm.state.GetLastAccepted()
 // Then it notifies the consensus engine
 // that a new block is ready to be added to consensus
 // (namely, a block with data [data])
-func (vm *VM) proposeBlock(data [DataLen]byte) {
+func (vm *VM) proposeBlock(data [DataLen]byte) bool {
+	if len(vm.mempool) > MaxMempoolSize {
+		return false
+	}
 	vm.mempool = append(vm.mempool, data)
 	vm.NotifyBlockReady()
+	return true
 }
 
 // ParseBlock parses [bytes] to a snowman.Block

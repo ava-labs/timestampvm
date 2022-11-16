@@ -67,7 +67,7 @@ COMMENT
 pkill -P 66810 && kill -2 66810 && pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 ```
 
-## Load Testing VM
+## Load Testing the VM
 ```bash
-./scripts/tests.load.sh [AVALANCHEGO_PATH]
+./scripts/tests.load.sh
 ```

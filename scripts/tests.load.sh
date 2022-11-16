@@ -10,65 +10,44 @@ set -e
 # to pass this flag to all child processes spawned by the shell.
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
-# e.g.,
-# ./scripts/tests.load.sh /tmp/avalanchego
-#
-# run without e2e tests
-# ./scripts/tests.load.sh /tmp/avalanchego
-#
-# to run E2E tests (terminates cluster afterwards)
-# E2E=true ./scripts/tests.load.sh 1.7.13
+# Ensure we are in the right location
 if ! [[ "$0" =~ scripts/tests.load.sh ]]; then
   echo "must be run from repository root"
   exit 255
 fi
 
-AVALANCHEGO_PATH=$1
-if [[ -z "${AVALANCHEGO_PATH}" ]]; then
-  echo "Missing avalanchego argument!"
-  echo "Usage: ${0} [AVALANCHEGO_PATH]" >> /dev/stderr
-  exit 255
-fi
-
+# PWD is used in the avalanchego build script so we use a different var
+PPWD=$(pwd)
 ############################
-echo "copying avalanchego"
-LOAD_PATH=/tmp/timestampvm-load
-rm -rf ${LOAD_PATH}
-mkdir ${LOAD_PATH}
-cp ${AVALANCHEGO_PATH} ${LOAD_PATH}
+echo "building avalanchego"
+ROOT_PATH=/tmp/timestampvm-load
+rm -rf ${ROOT_PATH}
+mkdir ${ROOT_PATH}
+cd ${ROOT_PATH}
+git clone https://github.com/ava-labs/avalanchego.git
+cd avalanchego
+# we checkout a custom branch as a stopgap until v1.9.3 is released
+git checkout local-subnet-testing
+./scripts/build.sh
+cd ${PPWD}
 
 ############################
 echo "building timestampvm"
-GOARCH=$(go env GOARCH)
-GOOS=$(go env GOOS)
-LOAD_PLUGIN_DIR=${LOAD_PATH}/plugins
+BUILD_PATH=${ROOT_PATH}/avalanchego/build
+PLUGINS_PATH=${BUILD_PATH}/plugins
 
-# delete previous (if exists)
-rm -f ${LOAD_PLUGIN_DIR}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
-
+# previous binary already deleted in last build phase
 go build \
--o ${LOAD_PLUGIN_DIR}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+-o ${PLUGINS_PATH}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
 ./main/
-
-
-############################
-echo "updating perms"
-chmod -R 755 ${LOAD_PATH}
 
 ############################
 echo "creating genesis file"
-echo -n "e2e" >> ${LOAD_PATH}/.genesis
+echo -n "e2e" >> ${ROOT_PATH}/.genesis
 
 ############################
-
-############################
-
 echo "creating vm config"
-cat <<EOF > ${LOAD_PATH}/.config
-{}
-EOF
-
-############################
+echo -n "{}" >> ${ROOT_PATH}/.config
 
 ############################
 echo "building load.test"
@@ -111,10 +90,10 @@ echo "running load tests"
 --ginkgo.v \
 --network-runner-log-level warn \
 --network-runner-grpc-endpoint="0.0.0.0:12342" \
---avalanchego-path=${LOAD_PATH}/avalanchego \
---avalanchego-plugin-dir=${LOAD_PLUGIN_DIR} \
---vm-genesis-path=${LOAD_PATH}/.genesis \
---vm-config-path=${LOAD_PATH}/.config \
+--avalanchego-path=${BUILD_PATH}/avalanchego \
+--avalanchego-plugin-dir=${PLUGINS_PATH} \
+--vm-genesis-path=${ROOT_PATH}/.genesis \
+--vm-config-path=${ROOT_PATH}/.config \
 --terminal-height=1000000
 
 ############################
@@ -124,4 +103,3 @@ echo "network-runner RPC server was running on PID ${PID} as test mode; terminat
 pkill -P ${PID} || true
 kill -2 ${PID} || true
 pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH || true # in case pkill didn't work
-exit ${STATUS}

@@ -301,7 +301,13 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 					gomega.Ω(err).Should(gomega.BeNil())
 					success, err := cli.ProposeBlock(context.Background(), data)
 					gomega.Ω(err).Should(gomega.BeNil())
-					gomega.Ω(success).Should(gomega.BeTrue())
+					if !success {
+						// If the mempool is full, pause before submitting more data
+						//
+						// TODO: in a robust testing scenario, we'd want to resubmit this
+						// data to avoid loss
+						time.Sleep(1 * time.Second)
+					}
 				}
 				return gctx.Err()
 			})
@@ -311,17 +317,22 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			defer ginkgo.GinkgoRecover()
 
 			cli := instances[0].cli
+			last := uint64(0)
 			for gctx.Err() == nil {
 				_, _, lastHeight, _, _, err := cli.GetBlock(gctx, nil)
 				if err != nil {
 					continue
 				}
-				log.Info("performance", "height", lastHeight, "bps", float64(lastHeight)/time.Since(start).Seconds())
+				log.Info("performance", "height", lastHeight,
+					"avg bps", float64(lastHeight)/time.Since(start).Seconds(),
+					"last bps", float64(lastHeight-last)/3.0,
+				)
 				if lastHeight > terminalHeight {
 					log.Info("exiting at terminal height")
 					cancel()
 					return nil
 				}
+				last = lastHeight
 				time.Sleep(3 * time.Second)
 			}
 			return gctx.Err()
