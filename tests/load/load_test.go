@@ -175,7 +175,7 @@ var _ = ginkgo.BeforeSuite(func() {
 			),
 			// Disable all rate limiting
 			runner_sdk.WithGlobalNodeConfig(`{
-				"log-level":"debug",
+				"log-level":"warn",
 				"throttler-inbound-validator-alloc-size":"107374182",
 				"throttler-inbound-node-max-processing-msgs":"100000",
 				"throttler-inbound-bandwidth-refill-rate":"1073741824",
