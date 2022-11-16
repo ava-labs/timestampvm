@@ -61,8 +61,7 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool          [][DataLen]byte
-	mempoolAdditions int
+	mempool [][DataLen]byte
 
 	// Block ID --> Block
 	// Each element is a block that passed verification but
