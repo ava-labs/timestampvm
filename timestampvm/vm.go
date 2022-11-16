@@ -28,7 +28,7 @@ import (
 const (
 	DataLen        = 32
 	Name           = "timestampvm"
-	MaxMempoolSize = 1024
+	MaxMempoolSize = 4096
 )
 
 var (

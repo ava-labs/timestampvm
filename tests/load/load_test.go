@@ -30,6 +30,11 @@ func TestLoad(t *testing.T) {
 	ginkgo.RunSpecs(t, "timestampvm load test suites")
 }
 
+const (
+	backoffDur = 50 * time.Millisecond
+	maxBackoff = 5 * time.Second
+)
+
 var (
 	requestTimeout time.Duration
 
@@ -295,19 +300,23 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 			g.Go(func() error {
 				defer ginkgo.GinkgoRecover()
 
+				delay := time.Duration(0)
 				for gctx.Err() == nil {
 					data := [timestampvm.DataLen]byte{}
 					_, err := rand.Read(data[:])
 					gomega.Ω(err).Should(gomega.BeNil())
 					success, err := cli.ProposeBlock(context.Background(), data)
 					gomega.Ω(err).Should(gomega.BeNil())
-					if !success {
+					if success && delay > 0 {
+						delay -= backoffDur
+					} else if !success && delay < maxBackoff {
 						// If the mempool is full, pause before submitting more data
 						//
 						// TODO: in a robust testing scenario, we'd want to resubmit this
 						// data to avoid loss
-						time.Sleep(1 * time.Second)
+						delay += backoffDur
 					}
+					time.Sleep(delay)
 				}
 				return gctx.Err()
 			})
