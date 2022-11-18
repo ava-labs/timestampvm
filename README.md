@@ -80,12 +80,12 @@ To kickoff a load test, all you need to do is run the following command:
 This will automatically:
 * disable all rate limiting rules in AvalancheGo
 * activate the ProposerVM immediately (usually activates after 5 minutes on
-  a new network)
-* set the ProposerVM block proposer timer to have 0 delay (generate blocks as
+  a new Subnet)
+* set the ProposerVM block timer to have 0 delay (generate blocks as
   fast as possible)
 
 When running, you'll see a set of logs printed out indicating the current
-number of blocks per second being generated **and finalized** on a local network:
+number of blocks per second **generated and finalized** on a local network:
 ```
 INFO[11-18|09:19:58] Stats                                    height=0 avg bps=0.000 last bps=0.000
 INFO[11-18|09:20:01] Stats                                    height=261 avg bps=86.795 last bps=87.000
