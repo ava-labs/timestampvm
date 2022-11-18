@@ -40,7 +40,7 @@ func (cli *client) ProposeBlock(ctx context.Context, data [timestampvm.DataLen]b
 
 	resp := new(timestampvm.ProposeBlockReply)
 	err = cli.req.SendRequest(ctx,
-		"timestamp.proposeBlock",
+		"timestampvm.proposeBlock",
 		&timestampvm.ProposeBlockArgs{Data: bytes},
 		resp,
 	)
@@ -53,7 +53,7 @@ func (cli *client) ProposeBlock(ctx context.Context, data [timestampvm.DataLen]b
 func (cli *client) GetBlock(ctx context.Context, blockID *ids.ID) (uint64, [timestampvm.DataLen]byte, uint64, ids.ID, ids.ID, error) {
 	resp := new(timestampvm.GetBlockReply)
 	err := cli.req.SendRequest(ctx,
-		"timestamp.getBlock",
+		"timestampvm.getBlock",
 		&timestampvm.GetBlockArgs{ID: blockID},
 		resp,
 	)
