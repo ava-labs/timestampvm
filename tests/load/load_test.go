@@ -341,7 +341,7 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 				if err != nil {
 					continue
 				}
-				log.Info("performance", "height", lastHeight,
+				log.Info("Stats", "height", lastHeight,
 					"avg bps", float64(lastHeight)/time.Since(start).Seconds(),
 					"last bps", float64(lastHeight-last)/3.0,
 				)
