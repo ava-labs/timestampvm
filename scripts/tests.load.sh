@@ -34,8 +34,11 @@ cd ${ROOT_PATH}
 git clone https://github.com/ava-labs/avalanchego.git
 cd avalanchego
 git checkout ${VERSION}
-# We build manually instead of downloading binaries because it will be
-# optimized for the arch
+# We build AvalancheGo manually instead of downloading binaries
+# because the machine code will be better optimized for the local environment
+#
+# For example, using the pre-built binary on Apple Silicon is about ~40% slower
+# because it requires Rosetta 2 emulation.
 ./scripts/build.sh
 cd ${PPWD}
 
