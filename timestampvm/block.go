@@ -105,6 +105,7 @@ func (b *Block) Accept(ctx context.Context) error {
 
 	// Delete this block from verified blocks as it's accepted
 	delete(b.vm.verifiedBlocks, b.ID())
+	b.vm.blocks.Put(b.ID(), b)
 
 	// Commit changes to database
 	return b.vm.state.Commit()

@@ -13,6 +13,7 @@ import (
 	log "github.com/inconshreveable/log15"
 	"go.uber.org/zap"
 
+	"github.com/ava-labs/avalanchego/cache"
 	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
@@ -61,12 +62,14 @@ type VM struct {
 	toEngine chan<- common.Message
 
 	// Proposed pieces of data that haven't been put into a block and proposed yet
-	mempool [][DataLen]byte
+	mempool chan [DataLen]byte
 
 	// Block ID --> Block
 	// Each element is a block that passed verification but
 	// hasn't yet been accepted/rejected
 	verifiedBlocks map[ids.ID]*Block
+
+	blocks *cache.LRU
 
 	// Indicates that this VM has finised bootstrapping for the chain
 	bootstrapped utils.AtomicBool
@@ -102,6 +105,8 @@ func (vm *VM) Initialize(
 	vm.snowCtx = snowCtx
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]*Block)
+	vm.blocks = &cache.LRU{Size: 1024}
+	vm.mempool = make(chan [DataLen]byte, MaxMempoolSize)
 
 	// Create new state
 	vm.state = NewState(vm.dbManager.Current().Database, vm)
@@ -188,7 +193,7 @@ func (vm *VM) CreateHandlers(ctx context.Context) (map[string]*common.HTTPHandle
 
 	return map[string]*common.HTTPHandler{
 		"": {
-			LockOptions: common.WriteLock,
+			LockOptions: common.NoLock,
 			Handler:     server,
 		},
 	}, nil
@@ -218,13 +223,13 @@ func (vm *VM) HealthCheck(ctx context.Context) (interface{}, error) { return nil
 
 // BuildBlock returns a block that this vm wants to add to consensus
 func (vm *VM) BuildBlock(ctx context.Context) (snowman.Block, error) {
-	if len(vm.mempool) == 0 { // There is no block to be built
+	var value [DataLen]byte
+	select {
+	case value = <-vm.mempool:
+	default:
+		// There is no block to be built
 		return nil, errNoPendingBlocks
 	}
-
-	// Get the value to put in the new block
-	value := vm.mempool[0]
-	vm.mempool = vm.mempool[1:]
 
 	// Notify consensus engine that there are more pending data for blocks
 	// (if that is the case) when done building this block
@@ -273,7 +278,16 @@ func (vm *VM) getBlock(blkID ids.ID) (*Block, error) {
 		return blk, nil
 	}
 
-	return vm.state.GetBlock(blkID)
+	if blk, exists := vm.blocks.Get(blkID); exists {
+		return blk.(*Block), nil
+	}
+
+	blk, err := vm.state.GetBlock(blkID)
+	if err != nil {
+		return nil, err
+	}
+	vm.blocks.Put(blkID, blk)
+	return blk, nil
 }
 
 // LastAccepted returns the block most recently accepted
@@ -284,10 +298,11 @@ func (vm *VM) LastAccepted(ctx context.Context) (ids.ID, error) { return vm.stat
 // that a new block is ready to be added to consensus
 // (namely, a block with data [data])
 func (vm *VM) proposeBlock(data [DataLen]byte) bool {
-	if len(vm.mempool) > MaxMempoolSize {
+	select {
+	case vm.mempool <- data:
+	default:
 		return false
 	}
-	vm.mempool = append(vm.mempool, data)
 	vm.NotifyBlockReady()
 	return true
 }
