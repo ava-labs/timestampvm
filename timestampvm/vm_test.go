@@ -4,6 +4,7 @@
 package timestampvm
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ava-labs/avalanchego/database/manager"
@@ -28,7 +29,7 @@ func TestGenesis(t *testing.T) {
 	assert.True(ok)
 
 	// Get lastAccepted
-	lastAccepted, err := vm.LastAccepted()
+	lastAccepted, err := vm.LastAccepted(context.Background())
 	assert.NoError(err)
 	assert.NotEqual(ids.Empty, lastAccepted)
 
@@ -44,21 +45,23 @@ func TestGenesis(t *testing.T) {
 
 func TestHappyPath(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
+
 	// Initialize the vm
-	vm, ctx, msgChan, err := newTestVM()
+	vm, snowCtx, msgChan, err := newTestVM()
 	assert.NoError(err)
 
-	lastAcceptedID, err := vm.LastAccepted()
+	lastAcceptedID, err := vm.LastAccepted(ctx)
 	assert.NoError(err)
 	genesisBlock, err := vm.getBlock(lastAcceptedID)
 	assert.NoError(err)
 
 	// in an actual execution, the engine would set the preference
-	assert.NoError(vm.SetPreference(genesisBlock.ID()))
+	assert.NoError(vm.SetPreference(ctx, genesisBlock.ID()))
 
-	ctx.Lock.Lock()
+	snowCtx.Lock.Lock()
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 1}) // propose a value
-	ctx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 
 	select { // assert there is a pending tx message to the engine
 	case msg := <-msgChan:
@@ -68,15 +71,15 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	// build the block
-	ctx.Lock.Lock()
-	snowmanBlock2, err := vm.BuildBlock()
+	snowCtx.Lock.Lock()
+	snowmanBlock2, err := vm.BuildBlock(ctx)
 	assert.NoError(err)
 
-	assert.NoError(snowmanBlock2.Verify())
-	assert.NoError(snowmanBlock2.Accept())
-	assert.NoError(vm.SetPreference(snowmanBlock2.ID()))
+	assert.NoError(snowmanBlock2.Verify(ctx))
+	assert.NoError(snowmanBlock2.Accept(ctx))
+	assert.NoError(vm.SetPreference(ctx, snowmanBlock2.ID()))
 
-	lastAcceptedID, err = vm.LastAccepted()
+	lastAcceptedID, err = vm.LastAccepted(ctx)
 	assert.NoError(err)
 
 	// Should be the block we just accepted
@@ -87,10 +90,10 @@ func TestHappyPath(t *testing.T) {
 	assert.Equal(genesisBlock.ID(), block2.Parent())
 	assert.Equal([DataLen]byte{0, 0, 0, 0, 1}, block2.Data())
 	assert.Equal(snowmanBlock2.ID(), block2.ID())
-	assert.NoError(block2.Verify())
+	assert.NoError(block2.Verify(ctx))
 
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 2}) // propose a block
-	ctx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 
 	select { // verify there is a pending tx message to the engine
 	case msg := <-msgChan:
@@ -99,16 +102,16 @@ func TestHappyPath(t *testing.T) {
 		assert.FailNow("should have been pendingTxs message on channel")
 	}
 
-	ctx.Lock.Lock()
+	snowCtx.Lock.Lock()
 
 	// build the block
-	snowmanBlock3, err := vm.BuildBlock()
+	snowmanBlock3, err := vm.BuildBlock(ctx)
 	assert.NoError(err)
-	assert.NoError(snowmanBlock3.Verify())
-	assert.NoError(snowmanBlock3.Accept())
-	assert.NoError(vm.SetPreference(snowmanBlock3.ID()))
+	assert.NoError(snowmanBlock3.Verify(ctx))
+	assert.NoError(snowmanBlock3.Accept(ctx))
+	assert.NoError(vm.SetPreference(ctx, snowmanBlock3.ID()))
 
-	lastAcceptedID, err = vm.LastAccepted()
+	lastAcceptedID, err = vm.LastAccepted(ctx)
 	assert.NoError(err)
 	// The block we just accepted
 	block3, err := vm.getBlock(lastAcceptedID)
@@ -118,7 +121,7 @@ func TestHappyPath(t *testing.T) {
 	assert.Equal(snowmanBlock2.ID(), block3.Parent())
 	assert.Equal([DataLen]byte{0, 0, 0, 0, 2}, block3.Data())
 	assert.Equal(snowmanBlock3.ID(), block3.ID())
-	assert.NoError(block3.Verify())
+	assert.NoError(block3.Verify(ctx))
 
 	// Next, check the blocks we added are there
 	block2FromState, err := vm.getBlock(block2.ID())
@@ -129,7 +132,7 @@ func TestHappyPath(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(snowmanBlock3.ID(), block3FromState.ID())
 
-	ctx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 }
 
 func TestService(t *testing.T) {
@@ -148,15 +151,16 @@ func TestSetState(t *testing.T) {
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
 	assert.NoError(err)
+	ctx := context.Background()
 	// bootstrapping
-	assert.NoError(vm.SetState(snow.Bootstrapping))
+	assert.NoError(vm.SetState(ctx, snow.Bootstrapping))
 	assert.False(vm.bootstrapped.GetValue())
 	// bootstrapped
-	assert.NoError(vm.SetState(snow.NormalOp))
+	assert.NoError(vm.SetState(ctx, snow.NormalOp))
 	assert.True(vm.bootstrapped.GetValue())
 	// unknown
 	unknownState := snow.State(99)
-	assert.ErrorIs(vm.SetState(unknownState), snow.ErrUnknownState)
+	assert.ErrorIs(vm.SetState(ctx, unknownState), snow.ErrUnknownState)
 }
 
 func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
@@ -167,8 +171,8 @@ func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
 	})
 	msgChan := make(chan common.Message, 1)
 	vm := &VM{}
-	ctx := snow.DefaultContextTest()
-	ctx.ChainID = blockchainID
-	err := vm.Initialize(ctx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
-	return vm, ctx, msgChan, err
+	snowCtx := snow.DefaultContextTest()
+	snowCtx.ChainID = blockchainID
+	err := vm.Initialize(context.Background(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	return vm, snowCtx, msgChan, err
 }
