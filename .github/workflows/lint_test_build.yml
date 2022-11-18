@@ -48,6 +48,6 @@ jobs:
           go-version: 1.19
       - name: Run e2e tests
         shell: bash
-        run: scripts/run.sh 1.9.2
+        run: scripts/run.sh 1.9.3
         env:
           E2E: true
