@@ -33,7 +33,7 @@ mkdir ${ROOT_PATH}
 cd ${ROOT_PATH}
 git clone https://github.com/ava-labs/avalanchego.git
 cd avalanchego
-git checkout ${VERSION}
+git checkout v${VERSION}
 # We build AvalancheGo manually instead of downloading binaries
 # because the machine code will be better optimized for the local environment
 #

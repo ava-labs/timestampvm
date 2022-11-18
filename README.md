@@ -69,5 +69,5 @@ pkill -P 66810 && kill -2 66810 && pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5i
 
 ## Load Testing the VM
 ```bash
-./scripts/tests.load.sh
+./scripts/tests.load.sh <version>
 ```
