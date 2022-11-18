@@ -17,6 +17,10 @@ var (
 )
 
 func MarshalBlock(b *Block) []byte {
+	if len(b.bytes) > 0 {
+		return b.bytes
+	}
+
 	raw := make([]byte, blockSize)
 	work := raw
 
