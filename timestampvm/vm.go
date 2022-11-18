@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	DataLen = 32
-	Name    = "timestampvm"
+	DataLen        = 32
+	Name           = "timestampvm"
+	MaxMempoolSize = 4096
 )
 
 var (
@@ -35,8 +36,8 @@ var (
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
 	Version            = &version.Semantic{
 		Major: 1,
-		Minor: 2,
-		Patch: 9,
+		Minor: 3,
+		Patch: 0,
 	}
 
 	_ block.ChainVM = &VM{}
@@ -161,7 +162,7 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 
 	// Accept the genesis block
 	// Sets [vm.lastAccepted] and [vm.preferred]
-	if err := genesisBlock.Accept(context.Background()); err != nil {
+	if err := genesisBlock.Accept(context.TODO()); err != nil {
 		return fmt.Errorf("error accepting genesis block: %w", err)
 	}
 
@@ -282,9 +283,13 @@ func (vm *VM) LastAccepted(ctx context.Context) (ids.ID, error) { return vm.stat
 // Then it notifies the consensus engine
 // that a new block is ready to be added to consensus
 // (namely, a block with data [data])
-func (vm *VM) proposeBlock(data [DataLen]byte) {
+func (vm *VM) proposeBlock(data [DataLen]byte) bool {
+	if len(vm.mempool) > MaxMempoolSize {
+		return false
+	}
 	vm.mempool = append(vm.mempool, data)
 	vm.NotifyBlockReady()
+	return true
 }
 
 // ParseBlock parses [bytes] to a snowman.Block
@@ -388,11 +393,11 @@ func (vm *VM) Version(ctx context.Context) (string, error) {
 	return Version.String(), nil
 }
 
-func (vm *VM) Connected(ctx context.Context, id ids.NodeID, nodeVersion *version.Application) error {
+func (vm *VM) Connected(_ context.Context, id ids.NodeID, nodeVersion *version.Application) error {
 	return nil // noop
 }
 
-func (vm *VM) Disconnected(ctx context.Context, id ids.NodeID) error {
+func (vm *VM) Disconnected(_ context.Context, id ids.NodeID) error {
 	return nil // noop
 }
 

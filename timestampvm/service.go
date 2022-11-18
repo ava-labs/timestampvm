@@ -1,4 +1,4 @@
-// (c) 2019-2020, Ava Labs, Inc. All rights reserved.
+// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -37,8 +37,7 @@ func (s *Service) ProposeBlock(_ *http.Request, args *ProposeBlockArgs, reply *P
 	if err != nil || len(bytes) != DataLen {
 		return errBadData
 	}
-	s.vm.proposeBlock(BytesToData(bytes))
-	reply.Success = true
+	reply.Success = s.vm.proposeBlock(BytesToData(bytes))
 	return nil
 }
 

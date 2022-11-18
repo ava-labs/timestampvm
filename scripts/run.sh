@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# // (c) 2019-2022, Ava Labs, Inc. All rights reserved.
-# // See the file LICENSE for licensing terms.
+# (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+# See the file LICENSE for licensing terms.
 
 set -e
 
@@ -93,18 +93,14 @@ find /tmp/avalanchego-v${VERSION}
 ############################
 
 echo "creating genesis file"
-rm -f /tmp/.genesis
-echo -n "e2e" >> /tmp/.genesis
+echo -n "e2e" > /tmp/.genesis
 
 ############################
 
 ############################
 
 echo "creating vm config"
-rm -f /tmp/.config
-cat <<EOF > /tmp/.config
-{}
-EOF
+echo -n "{}" > /tmp/.config
 
 ############################
 
@@ -113,7 +109,6 @@ echo "building e2e.test"
 # to install the ginkgo binary (required for test build and run)
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
-./tests/e2e/e2e.test --help
 
 #################################
 # download avalanche-network-runner

@@ -1,4 +1,4 @@
-// (c) 2019-2020, Ava Labs, Inc. All rights reserved.
+// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -20,6 +20,7 @@ var blockchainID = ids.ID{1, 2, 3}
 // Assert that after initialization, the vm has the state we expect
 func TestGenesis(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.TODO()
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
 	assert.NoError(err)
@@ -29,7 +30,7 @@ func TestGenesis(t *testing.T) {
 	assert.True(ok)
 
 	// Get lastAccepted
-	lastAccepted, err := vm.LastAccepted(context.Background())
+	lastAccepted, err := vm.LastAccepted(ctx)
 	assert.NoError(err)
 	assert.NotEqual(ids.Empty, lastAccepted)
 
@@ -45,7 +46,7 @@ func TestGenesis(t *testing.T) {
 
 func TestHappyPath(t *testing.T) {
 	assert := assert.New(t)
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	// Initialize the vm
 	vm, snowCtx, msgChan, err := newTestVM()
@@ -148,10 +149,10 @@ func TestService(t *testing.T) {
 func TestSetState(t *testing.T) {
 	// Initialize the vm
 	assert := assert.New(t)
+	ctx := context.TODO()
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
 	assert.NoError(err)
-	ctx := context.Background()
 	// bootstrapping
 	assert.NoError(vm.SetState(ctx, snow.Bootstrapping))
 	assert.False(vm.bootstrapped.GetValue())
@@ -173,6 +174,6 @@ func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
 	vm := &VM{}
 	snowCtx := snow.DefaultContextTest()
 	snowCtx.ChainID = blockchainID
-	err := vm.Initialize(context.Background(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	err := vm.Initialize(context.TODO(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
 	return vm, snowCtx, msgChan, err
 }

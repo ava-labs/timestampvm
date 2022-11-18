@@ -1,35 +1,39 @@
 // Copyright (C) 2019-2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-// e2e implements the e2e tests.
-package e2e_test
+// load implements the load tests.
+package load_test
 
 import (
 	"context"
+	"crypto/rand"
 	"flag"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/timestampvm/client"
+	"github.com/ava-labs/timestampvm/tests/load/client"
 	"github.com/ava-labs/timestampvm/timestampvm"
 	log "github.com/inconshreveable/log15"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/gomega"
-	"sigs.k8s.io/yaml"
+	"golang.org/x/sync/errgroup"
 )
 
-func TestE2e(t *testing.T) {
+func TestLoad(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "timestampvm e2e test suites")
+	ginkgo.RunSpecs(t, "timestampvm load test suites")
 }
+
+const (
+	backoffDur = 50 * time.Millisecond
+	maxBackoff = 5 * time.Second
+)
 
 var (
 	requestTimeout time.Duration
@@ -41,11 +45,11 @@ var (
 	execPath  string
 	pluginDir string
 
-	vmGenesisPath string
-	vmConfigPath  string
-	outputPath    string
+	vmGenesisPath    string
+	vmConfigPath     string
+	subnetConfigPath string
 
-	mode string
+	terminalHeight uint64
 )
 
 func init() {
@@ -105,17 +109,17 @@ func init() {
 	)
 
 	flag.StringVar(
-		&outputPath,
-		"output-path",
+		&subnetConfigPath,
+		"subnet-config-path",
 		"",
-		"output YAML path to write local cluster information",
+		"Subnet configfile path",
 	)
 
-	flag.StringVar(
-		&mode,
-		"mode",
-		"test",
-		"'test' to shut down cluster after tests, 'run' to skip tests and only run without shutdown",
+	flag.Uint64Var(
+		&terminalHeight,
+		"terminal-height",
+		1_000_000,
+		"height to quit at",
 	)
 }
 
@@ -134,18 +138,18 @@ func init() {
 	}
 }
 
-const (
-	modeTest = "test"
-	modeRun  = "run"
-)
-
 var (
 	cli               runner_sdk.Client
 	timestampvmRPCEps []string
+	instances         []instance
 )
 
+type instance struct {
+	uri string
+	cli client.Client
+}
+
 var _ = ginkgo.BeforeSuite(func() {
-	gomega.Expect(mode).Should(gomega.Or(gomega.Equal("test"), gomega.Equal("run")))
 	logLevel, err := logging.ToLevel(networkRunnerLogLevel)
 	gomega.Expect(err).Should(gomega.BeNil())
 	logFactory := logging.NewFactory(logging.Config{
@@ -171,15 +175,17 @@ var _ = ginkgo.BeforeSuite(func() {
 			runner_sdk.WithBlockchainSpecs(
 				[]*rpcpb.BlockchainSpec{
 					{
-						VmName:      vmName,
-						Genesis:     vmGenesisPath,
-						ChainConfig: vmConfigPath,
+						VmName:       vmName,
+						Genesis:      vmGenesisPath,
+						ChainConfig:  vmConfigPath,
+						SubnetConfig: subnetConfigPath,
 					},
 				},
 			),
 			// Disable all rate limiting
 			runner_sdk.WithGlobalNodeConfig(`{
-				"log-level":"debug",
+				"log-level":"warn",
+				"proposervm-use-current-height":true,
 				"throttler-inbound-validator-alloc-size":"107374182",
 				"throttler-inbound-node-max-processing-msgs":"100000",
 				"throttler-inbound-bandwidth-refill-rate":"1073741824",
@@ -257,20 +263,6 @@ done:
 		outf("{{blue}}avalanche timestampvm RPC:{{/}} %q\n", rpcEP)
 	}
 
-	pid := os.Getpid()
-	outf("{{blue}}{{bold}}writing output %q with PID %d{{/}}\n", outputPath, pid)
-	ci := clusterInfo{
-		URIs:     uris,
-		Endpoint: fmt.Sprintf("/ext/bc/%s", blockchainID),
-		PID:      pid,
-		LogsDir:  logsDir,
-	}
-	gomega.Expect(ci.Save(outputPath)).Should(gomega.BeNil())
-
-	b, err := os.ReadFile(outputPath)
-	gomega.Expect(err).Should(gomega.BeNil())
-	outf("\n{{blue}}$ cat %s:{{/}}\n%s\n", outputPath, string(b))
-
 	instances = make([]instance, len(uris))
 	for i := range uris {
 		u := uris[i] + fmt.Sprintf("/ext/bc/%s", blockchainID)
@@ -279,42 +271,29 @@ done:
 			cli: client.New(u),
 		}
 	}
+
+	defer outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
 })
 
-var instances []instance
-
-type instance struct {
-	uri string
-	cli client.Client
-}
-
 var _ = ginkgo.AfterSuite(func() {
-	switch mode {
-	case modeTest:
-		outf("{{red}}shutting down cluster{{/}}\n")
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		_, err := cli.Stop(ctx)
-		cancel()
-		gomega.Expect(err).Should(gomega.BeNil())
-		log.Warn("cluster shutdown result", "err", err)
-
-	case modeRun:
-		outf("{{yellow}}skipping shutting down cluster{{/}}\n")
-	}
+	outf("{{red}}shutting down cluster{{/}}\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	_, err := cli.Stop(ctx)
+	cancel()
+	gomega.Expect(err).Should(gomega.BeNil())
+	log.Warn("cluster shutdown result", "err", err)
 
 	outf("{{red}}shutting down client{{/}}\n")
-	err := cli.Close()
+	err = cli.Close()
 	gomega.Expect(err).Should(gomega.BeNil())
 	log.Warn("client shutdown result", "err", err)
 })
 
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
-	var gid ids.ID
 	ginkgo.It("get genesis block", func() {
 		for _, inst := range instances {
 			cli := inst.cli
-			timestamp, data, height, id, _, err := cli.GetBlock(context.Background(), nil)
-			gid = id
+			timestamp, data, height, _, _, err := cli.GetBlock(context.Background(), nil)
 			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
 			gomega.Ω(data).Should(gomega.Equal(timestampvm.BytesToData([]byte("e2e"))))
 			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
@@ -322,40 +301,61 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 		}
 	})
 
-	switch mode {
-	case modeRun:
-		outf("{{yellow}}skipping ProposeBlock tests{{/}}\n")
-		return
-	}
+	ginkgo.It("create new blocks", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		g, gctx := errgroup.WithContext(ctx)
+		for _, instance := range instances {
+			cli := instance.cli
+			g.Go(func() error {
+				defer ginkgo.GinkgoRecover()
 
-	data := timestampvm.BytesToData(hashing.ComputeHash256([]byte("test")))
-	now := time.Now().Unix()
-	ginkgo.It("create new block", func() {
-		cli := instances[0].cli
-		success, err := cli.ProposeBlock(context.Background(), data)
-		gomega.Ω(success).Should(gomega.BeTrue())
-		gomega.Ω(err).Should(gomega.BeNil())
-	})
+				delay := time.Duration(0)
+				for gctx.Err() == nil {
+					data := [timestampvm.DataLen]byte{}
+					_, err := rand.Read(data[:])
+					gomega.Ω(err).Should(gomega.BeNil())
+					success, err := cli.ProposeBlock(gctx, data)
+					gomega.Ω(err).Should(gomega.BeNil())
+					if success && delay > 0 {
+						delay -= backoffDur
+					} else if !success && delay < maxBackoff {
+						// If the mempool is full, pause before submitting more data
+						//
+						// TODO: in a robust testing scenario, we'd want to resubmit this
+						// data to avoid loss
+						delay += backoffDur
+					}
+					time.Sleep(delay)
+				}
+				return gctx.Err()
+			})
+		}
+		start := time.Now()
+		g.Go(func() error {
+			defer ginkgo.GinkgoRecover()
 
-	ginkgo.It("confirm block processed on all nodes", func() {
-		for i, inst := range instances {
-			cli := inst.cli
-			for { // Wait for block to be accepted
-				timestamp, bdata, height, _, pid, err := cli.GetBlock(context.Background(), nil)
-				if height == 0 {
-					log.Info("waiting for height to increase", "instance", i)
-					time.Sleep(1 * time.Second)
+			cli := instances[0].cli
+			last := uint64(0)
+			for gctx.Err() == nil {
+				_, _, lastHeight, _, _, err := cli.GetBlock(gctx, nil)
+				if err != nil {
 					continue
 				}
-				gomega.Ω(uint64(now)-5 < timestamp).Should(gomega.BeTrue())
-				gomega.Ω(bdata).Should(gomega.Equal(data))
-				gomega.Ω(height).Should(gomega.Equal(uint64(1)))
-				gomega.Ω(pid).Should(gomega.Equal(gid))
-				gomega.Ω(err).Should(gomega.BeNil())
-				log.Info("height increased", "instance", i)
-				break
+				log.Info("Stats", "height", lastHeight,
+					"avg bps", float64(lastHeight)/time.Since(start).Seconds(),
+					"last bps", float64(lastHeight-last)/3.0,
+				)
+				if lastHeight > terminalHeight {
+					log.Info("exiting at terminal height")
+					cancel()
+					return nil
+				}
+				last = lastHeight
+				time.Sleep(3 * time.Second)
 			}
-		}
+			return gctx.Err()
+		})
+		log.Warn("exiting producer loop", "err", g.Wait())
 	})
 })
 
@@ -371,22 +371,4 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 func outf(format string, args ...interface{}) {
 	s := formatter.F(format, args...)
 	fmt.Fprint(formatter.ColorableStdOut, s)
-}
-
-// clusterInfo represents the local cluster information.
-type clusterInfo struct {
-	URIs     []string `json:"uris"`
-	Endpoint string   `json:"endpoint"`
-	PID      int      `json:"pid"`
-	LogsDir  string   `json:"logsDir"`
-}
-
-const fsModeWrite = 0o600
-
-func (ci clusterInfo) Save(p string) error {
-	ob, err := yaml.Marshal(ci)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(p, ob, fsModeWrite)
 }
