@@ -54,11 +54,11 @@ go build \
 
 ############################
 echo "creating genesis file"
-echo -n "e2e" >> ${ROOT_PATH}/.genesis
+echo -n "e2e" > ${ROOT_PATH}/.genesis
 
 ############################
 echo "creating vm config"
-echo -n "{}" >> ${ROOT_PATH}/.config
+echo -n "{}" > ${ROOT_PATH}/.config
 
 ############################
 echo "creating subnet config"

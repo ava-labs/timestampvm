@@ -93,16 +93,14 @@ find /tmp/avalanchego-v${VERSION}
 ############################
 
 echo "creating genesis file"
-rm -f /tmp/.genesis
-echo -n "e2e" >> /tmp/.genesis
+echo -n "e2e" > /tmp/.genesis
 
 ############################
 
 ############################
 
 echo "creating vm config"
-rm -f /tmp/.config
-echo -n "{}" >> /tmp/.config
+echo -n "{}" > /tmp/.config
 
 ############################
 
