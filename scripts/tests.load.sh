@@ -59,7 +59,7 @@ ACK_GINKGO_RC=true ginkgo build ./tests/load
 # download avalanche-network-runner
 # https://github.com/ava-labs/avalanche-network-runner
 ANR_REPO_PATH=github.com/ava-labs/avalanche-network-runner
-ANR_VERSION=e3f5816ca8a7508d359115a9c75e6bcb54a546a8
+ANR_VERSION=v1.3.2
 # version set
 go install -v ${ANR_REPO_PATH}@${ANR_VERSION}
 
