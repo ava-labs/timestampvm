@@ -102,9 +102,7 @@ echo -n "e2e" >> /tmp/.genesis
 
 echo "creating vm config"
 rm -f /tmp/.config
-cat <<EOF > /tmp/.config
-{}
-EOF
+echo -n "{}" >> /tmp/.config
 
 ############################
 

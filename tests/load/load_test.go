@@ -45,8 +45,9 @@ var (
 	execPath  string
 	pluginDir string
 
-	vmGenesisPath string
-	vmConfigPath  string
+	vmGenesisPath    string
+	vmConfigPath     string
+	subnetConfigPath string
 
 	terminalHeight uint64
 )
@@ -105,6 +106,13 @@ func init() {
 		"vm-config-path",
 		"",
 		"VM configfile path",
+	)
+
+	flag.StringVar(
+		&subnetConfigPath,
+		"subnet-config-path",
+		"",
+		"Subnet configfile path",
 	)
 
 	flag.Uint64Var(
@@ -170,7 +178,7 @@ var _ = ginkgo.BeforeSuite(func() {
 						VmName:       vmName,
 						Genesis:      vmGenesisPath,
 						ChainConfig:  vmConfigPath,
-						SubnetConfig: `{"proposerMinBlockDelay":"0"}`,
+						SubnetConfig: subnetConfigPath,
 					},
 				},
 			),

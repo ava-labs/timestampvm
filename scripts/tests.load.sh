@@ -66,13 +66,23 @@ go build \
 ./main/
 find /tmp/avalanchego-v${VERSION}
 
+############################
+echo "creating subnet config"
+rm -f /tmp/.subnet
+cat <<EOF > /tmp/.subnet
+{
+  "proposerMinBlockDelay":0
+}
+EOF
 
 ############################
 echo "creating genesis file"
+rm -f /tmp/.genesis
 echo -n "e2e" >> /tmp/.genesis
 
 ############################
 echo "creating vm config"
+rm -f /tmp/.config
 echo -n "{}" >> /tmp/.config
 
 ############################
@@ -120,6 +130,7 @@ echo "running load tests"
 --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
 --vm-genesis-path=/tmp/.genesis \
 --vm-config-path=/tmp/.config \
+--subnet-config-path=/tmp/.subnet \
 --terminal-height=1000000
 
 ############################
