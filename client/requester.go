@@ -56,13 +56,13 @@ func WithQueryParam(key, val string) Option {
 	}
 }
 
+// EndpointRequester is an extension of AvalancheGo's [EndpointRequester] with
+// [http.Client] reuse.
 type EndpointRequester struct {
 	cli       *http.Client
 	uri, base string
 }
 
-// NewEndpointRequester is an extension of AvalancheGo's EndpointRequester with
-// [http.Client] reuse.
 func NewEndpointRequester(uri, base string) *EndpointRequester {
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.MaxIdleConns = 100_000
