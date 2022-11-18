@@ -25,7 +25,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlWarn, log.StreamHandler(os.Stderr, log.TerminalFormat())))
+	log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat())))
 
 	rpcchainvm.Serve(&timestampvm.VM{})
 }
