@@ -1,3 +1,6 @@
+// // (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+// // See the file LICENSE for licensing terms.
+
 package timestampvm
 
 // BytesToData converts a byte slice to an array. If the byte slice input is

@@ -302,7 +302,6 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	})
 
 	ginkgo.It("create new blocks", func() {
-		ctx := context.Background()
 		ctx, cancel := context.WithCancel(context.Background())
 		g, gctx := errgroup.WithContext(ctx)
 		for _, instance := range instances {
@@ -315,7 +314,7 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 					data := [timestampvm.DataLen]byte{}
 					_, err := rand.Read(data[:])
 					gomega.Ω(err).Should(gomega.BeNil())
-					success, err := cli.ProposeBlock(context.Background(), data)
+					success, err := cli.ProposeBlock(gctx, data)
 					gomega.Ω(err).Should(gomega.BeNil())
 					if success && delay > 0 {
 						delay -= backoffDur
