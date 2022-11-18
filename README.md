@@ -68,6 +68,56 @@ pkill -P 66810 && kill -2 66810 && pkill -9 -f tGas3T58KzdjLHhBDMnH2TvrddhqTji5i
 ```
 
 ## Load Testing the VM
+Because `TimestampVM` is such a lightweight Virtual Machine, it is a great
+candidate for testing the raw performance of the `ProposerVM` wrapper in
+AvalancheGo.
+
+To kickoff a load test, all you need to do is run the following command:
 ```bash
-./scripts/tests.load.sh <version>
+./scripts/tests.load.sh 1.9.3
+```
+
+This will automatically:
+* disable all rate limiting rules in AvalancheGo
+* activate the ProposerVM immediately (usually activates after 5 minutes on
+  a new network)
+* set the ProposerVM block proposer timer to have 0 delay (generate blocks as
+  fast as possible)
+
+When running, you'll see a set of logs printed out indicating the current
+number of blocks per second being generated **and finalized** on a local network:
+```
+INFO[11-18|09:19:58] Stats                                    height=0 avg bps=0.000 last bps=0.000
+INFO[11-18|09:20:01] Stats                                    height=261 avg bps=86.795 last bps=87.000
+INFO[11-18|09:20:04] Stats                                    height=597 avg bps=99.372 last bps=112.000
+INFO[11-18|09:20:07] Stats                                    height=942 avg bps=104.566 last bps=115.000
+INFO[11-18|09:20:10] Stats                                    height=1291 avg bps=107.493 last bps=116.333
+INFO[11-18|09:20:13] Stats                                    height=1634 avg bps=108.854 last bps=114.333
+INFO[11-18|09:20:16] Stats                                    height=1976 avg bps=109.664 last bps=114.000
+INFO[11-18|09:20:19] Stats                                    height=2308 avg bps=109.804 last bps=110.667
+INFO[11-18|09:20:22] Stats                                    height=2636 avg bps=109.742 last bps=109.333
+INFO[11-18|09:20:25] Stats                                    height=2978 avg bps=110.213 last bps=114.000
+INFO[11-18|09:20:28] Stats                                    height=3318 avg bps=110.512 last bps=113.333
+INFO[11-18|09:20:31] Stats                                    height=3649 avg bps=110.489 last bps=110.333
+INFO[11-18|09:20:34] Stats                                    height=3987 avg bps=110.667 last bps=112.667
+INFO[11-18|09:20:37] Stats                                    height=4320 avg bps=110.691 last bps=111.000
+INFO[11-18|09:20:40] Stats                                    height=4653 avg bps=110.711 last bps=111.000
+INFO[11-18|09:20:43] Stats                                    height=4974 avg bps=110.453 last bps=107.000
+INFO[11-18|09:20:46] Stats                                    height=5304 avg bps=110.423 last bps=110.000
+INFO[11-18|09:20:49] Stats                                    height=5636 avg bps=110.434 last bps=110.667
+INFO[11-18|09:20:52] Stats                                    height=5950 avg bps=110.101 last bps=104.667
+INFO[11-18|09:20:55] Stats                                    height=6236 avg bps=109.317 last bps=95.333
+INFO[11-18|09:20:58] Stats                                    height=6552 avg bps=109.116 last bps=105.333
+INFO[11-18|09:21:01] Stats                                    height=6876 avg bps=109.061 last bps=108.000
+INFO[11-18|09:21:04] Stats                                    height=7210 avg bps=109.163 last bps=111.333
+INFO[11-18|09:21:07] Stats                                    height=7499 avg bps=108.574 last bps=96.333
+INFO[11-18|09:21:10] Stats                                    height=7787 avg bps=108.049 last bps=96.000
+INFO[11-18|09:21:13] Stats                                    height=8119 avg bps=108.152 last bps=110.667
+INFO[11-18|09:21:16] Stats                                    height=8449 avg bps=108.222 last bps=110.000
+INFO[11-18|09:21:19] Stats                                    height=8779 avg bps=108.279 last bps=110.000
+INFO[11-18|09:21:22] Stats                                    height=9107 avg bps=108.315 last bps=109.333
+INFO[11-18|09:21:25] Stats                                    height=9437 avg bps=108.372 last bps=110.000
+INFO[11-18|09:21:28] Stats                                    height=9757 avg bps=108.315 last bps=106.667
+INFO[11-18|09:21:31] Stats                                    height=10069 avg bps=108.175 last bps=104.000
+INFO[11-18|09:21:34] Stats                                    height=10401 avg bps=108.242 last bps=110.667
 ```
