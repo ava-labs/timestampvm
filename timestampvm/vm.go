@@ -47,7 +47,7 @@ var (
 // and a piece of data (a string)
 type VM struct {
 	// The context of this vm
-	ctx       *snow.Context
+	snowCtx   *snow.Context
 	dbManager manager.Manager
 
 	// State of this VM
@@ -98,7 +98,7 @@ func (vm *VM) Initialize(
 	log.Info("Initializing Timestamp VM", "Version", version)
 
 	vm.dbManager = dbManager
-	vm.ctx = snowCtx
+	vm.snowCtx = snowCtx
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]*Block)
 
@@ -257,7 +257,7 @@ func (vm *VM) NotifyBlockReady() {
 	select {
 	case vm.toEngine <- common.PendingTxs:
 	default:
-		vm.ctx.Log.Debug("dropping message to consensus engine")
+		vm.snowCtx.Log.Debug("dropping message to consensus engine")
 	}
 }
 
