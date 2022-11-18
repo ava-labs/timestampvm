@@ -297,11 +297,15 @@ func (vm *VM) proposeBlock(data [DataLen]byte) bool {
 // and by the consensus layer when it receives the byte representation of a block
 // from another node
 func (vm *VM) ParseBlock(ctx context.Context, bytes []byte) (snowman.Block, error) {
-	// A new empty block
-	block := &Block{}
+	// // A new empty block
+	// block := &Block{}
 
-	// Unmarshal the byte repr. of the block into our empty block
-	_, err := Codec.Unmarshal(bytes, block)
+	// // Unmarshal the byte repr. of the block into our empty block
+	// _, err := Codec.Unmarshal(bytes, block)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	block, err := UnmarshalBlock(bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -332,10 +336,11 @@ func (vm *VM) NewBlock(parentID ids.ID, height uint64, data [DataLen]byte, times
 	}
 
 	// Get the byte representation of the block
-	blockBytes, err := Codec.Marshal(CodecVersion, block)
-	if err != nil {
-		return nil, err
-	}
+	// blockBytes, err := Codec.Marshal(CodecVersion, block)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	blockBytes := MarshalBlock(block)
 
 	// Initialize the block by providing it with its byte representation
 	// and a reference to this VM

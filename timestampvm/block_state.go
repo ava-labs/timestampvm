@@ -44,12 +44,6 @@ type blockState struct {
 	vm *VM
 }
 
-// blkWrapper wraps the actual blk bytes and status to persist them together
-type blkWrapper struct {
-	Blk    []byte         `serialize:"true"`
-	Status choices.Status `serialize:"true"`
-}
-
 // NewBlockState returns BlockState with a new cache and given db
 func NewBlockState(db database.Database, vm *VM) BlockState {
 	return &blockState{
@@ -72,7 +66,7 @@ func (s *blockState) GetBlock(blkID ids.ID) (*Block, error) {
 	}
 
 	// get block bytes from db with the blkID key
-	wrappedBytes, err := s.blockDB.Get(blkID[:])
+	bytes, err := s.blockDB.Get(blkID[:])
 	if err != nil {
 		// we could not find it in the db, let's cache this blkID with nil value
 		// so next time we try to fetch the same key we can return error
@@ -84,20 +78,14 @@ func (s *blockState) GetBlock(blkID ids.ID) (*Block, error) {
 		return nil, err
 	}
 
-	// first decode/unmarshal the block wrapper so we can have status and block bytes
-	blkw := blkWrapper{}
-	if _, err := Codec.Unmarshal(wrappedBytes, &blkw); err != nil {
-		return nil, err
-	}
-
-	// now decode/unmarshal the actual block bytes to block
-	blk := &Block{}
-	if _, err := Codec.Unmarshal(blkw.Blk, blk); err != nil {
+	// decode/unmarshal the block bytes to block
+	blk, err := UnmarshalBlock(bytes)
+	if err != nil {
 		return nil, err
 	}
 
 	// initialize block with block bytes, status and vm
-	blk.Initialize(blkw.Blk, blkw.Status, s.vm)
+	blk.Initialize(bytes, choices.Accepted, s.vm)
 
 	// put block into cache
 	s.blkCache.Put(blkID, blk)
@@ -107,24 +95,15 @@ func (s *blockState) GetBlock(blkID ids.ID) (*Block, error) {
 
 // PutBlock puts block into both database and cache
 func (s *blockState) PutBlock(blk *Block) error {
-	// create block wrapper with block bytes and status
-	blkw := blkWrapper{
-		Blk:    blk.Bytes(),
-		Status: blk.Status(),
-	}
-
-	// encode block wrapper to its byte representation
-	wrappedBytes, err := Codec.Marshal(CodecVersion, &blkw)
-	if err != nil {
-		return err
-	}
+	// encode block to its byte representation
+	bytes := MarshalBlock(blk)
 
 	blkID := blk.ID()
 	// put actual block to cache, so we can directly fetch it from cache
 	s.blkCache.Put(blkID, blk)
 
 	// put wrapped block bytes into database
-	return s.blockDB.Put(blkID[:], wrappedBytes)
+	return s.blockDB.Put(blkID[:], bytes)
 }
 
 // DeleteBlock deletes block from both cache and database

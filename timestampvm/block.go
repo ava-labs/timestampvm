@@ -113,14 +113,10 @@ func (b *Block) Accept(ctx context.Context) error {
 // Reject sets this block's status to Rejected and saves the status in state
 // Recall that b.vm.DB.Commit() must be called to persist to the DB
 func (b *Block) Reject(ctx context.Context) error {
-	b.SetStatus(choices.Rejected) // Change state of this block
-	if err := b.vm.state.PutBlock(b); err != nil {
-		return err
-	}
 	// Delete this block from verified blocks as it's rejected
 	delete(b.vm.verifiedBlocks, b.ID())
-	// Commit changes to database
-	return b.vm.state.Commit()
+	// We don't persist rejected blocks as they'll never be fetched
+	return nil
 }
 
 // ID returns the ID of this block
