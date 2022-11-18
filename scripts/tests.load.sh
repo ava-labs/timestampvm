@@ -23,67 +23,48 @@ if [[ -z "${VERSION}" ]]; then
   exit 255
 fi
 
+# PWD is used in the avalanchego build script so we use a different var
+PPWD=$(pwd)
 ############################
-echo "downloading avalanchego"
-GOARCH=$(go env GOARCH)
-GOOS=$(go env GOOS)
-AVALANCHEGO_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
-AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-v${VERSION}/plugins
-
-if [ ! -f "$AVALANCHEGO_PATH" ]; then
-  DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-linux-${GOARCH}-v${VERSION}.tar.gz
-  DOWNLOAD_PATH=/tmp/avalanchego.tar.gz
-  if [[ ${GOOS} == "darwin" ]]; then
-    DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-macos-v${VERSION}.zip
-    DOWNLOAD_PATH=/tmp/avalanchego.zip
-  fi
-
-  rm -rf /tmp/avalanchego-v${VERSION}
-  rm -rf /tmp/avalanchego-build
-  rm -f ${DOWNLOAD_PATH}
-
-  echo "downloading avalanchego ${VERSION} at ${DOWNLOAD_URL}"
-  curl -L ${DOWNLOAD_URL} -o ${DOWNLOAD_PATH}
-
-  echo "extracting downloaded avalanchego"
-  if [[ ${GOOS} == "linux" ]]; then
-    tar xzvf ${DOWNLOAD_PATH} -C /tmp
-  elif [[ ${GOOS} == "darwin" ]]; then
-    unzip ${DOWNLOAD_PATH} -d /tmp/avalanchego-build
-    mv /tmp/avalanchego-build/build /tmp/avalanchego-v${VERSION}
-  fi
-  find /tmp/avalanchego-v${VERSION}
-fi
+echo "building avalanchego"
+ROOT_PATH=/tmp/timestampvm-load
+rm -rf ${ROOT_PATH}
+mkdir ${ROOT_PATH}
+cd ${ROOT_PATH}
+git clone https://github.com/ava-labs/avalanchego.git
+cd avalanchego
+git checkout ${VERSION}
+# We build manually instead of downloading binaries because it will be
+# optimized for the arch
+./scripts/build.sh
+cd ${PPWD}
 
 ############################
 echo "building timestampvm"
+BUILD_PATH=${ROOT_PATH}/avalanchego/build
+PLUGINS_PATH=${BUILD_PATH}/plugins
 
-# delete previous (if exists)
-rm -f /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
-
+# previous binary already deleted in last build phase
 go build \
--o /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+-o ${PLUGINS_PATH}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
 ./main/
-find /tmp/avalanchego-v${VERSION}
+
+############################
+echo "creating genesis file"
+echo -n "e2e" >> ${ROOT_PATH}/.genesis
+
+############################
+echo "creating vm config"
+echo -n "{}" >> ${ROOT_PATH}/.config
 
 ############################
 echo "creating subnet config"
 rm -f /tmp/.subnet
-cat <<EOF > /tmp/.subnet
+cat <<EOF > ${ROOT_PATH}/.subnet
 {
   "proposerMinBlockDelay":0
 }
 EOF
-
-############################
-echo "creating genesis file"
-rm -f /tmp/.genesis
-echo -n "e2e" >> /tmp/.genesis
-
-############################
-echo "creating vm config"
-rm -f /tmp/.config
-echo -n "{}" >> /tmp/.config
 
 ############################
 echo "building load.test"
@@ -126,11 +107,11 @@ echo "running load tests"
 --ginkgo.v \
 --network-runner-log-level warn \
 --network-runner-grpc-endpoint="0.0.0.0:12342" \
---avalanchego-path=${AVALANCHEGO_PATH} \
---avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
---vm-genesis-path=/tmp/.genesis \
---vm-config-path=/tmp/.config \
---subnet-config-path=/tmp/.subnet \
+--avalanchego-path=${BUILD_PATH}/avalanchego \
+--avalanchego-plugin-dir=${PLUGINS_PATH} \
+--vm-genesis-path=${ROOT_PATH}/.genesis \
+--vm-config-path=${ROOT_PATH}/.config \
+--subnet-config-path=${ROOT_PATH}/.subnet \
 --terminal-height=1000000
 
 ############################
