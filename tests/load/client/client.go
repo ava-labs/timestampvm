@@ -8,8 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting"
-	"github.com/ava-labs/avalanchego/utils/rpc"
-
 	"github.com/ava-labs/timestampvm/timestampvm"
 )
 
@@ -24,12 +22,12 @@ type Client interface {
 
 // New creates a new client object.
 func New(uri string) Client {
-	req := rpc.NewEndpointRequester(uri)
+	req := NewEndpointRequester(uri, "timestampvm")
 	return &client{req: req}
 }
 
 type client struct {
-	req rpc.EndpointRequester
+	req *EndpointRequester
 }
 
 func (cli *client) ProposeBlock(ctx context.Context, data [timestampvm.DataLen]byte) (bool, error) {
@@ -40,7 +38,7 @@ func (cli *client) ProposeBlock(ctx context.Context, data [timestampvm.DataLen]b
 
 	resp := new(timestampvm.ProposeBlockReply)
 	err = cli.req.SendRequest(ctx,
-		"timestamp.proposeBlock",
+		"proposeBlock",
 		&timestampvm.ProposeBlockArgs{Data: bytes},
 		resp,
 	)
@@ -53,7 +51,7 @@ func (cli *client) ProposeBlock(ctx context.Context, data [timestampvm.DataLen]b
 func (cli *client) GetBlock(ctx context.Context, blockID *ids.ID) (uint64, [timestampvm.DataLen]byte, uint64, ids.ID, ids.ID, error) {
 	resp := new(timestampvm.GetBlockReply)
 	err := cli.req.SendRequest(ctx,
-		"timestamp.getBlock",
+		"getBlock",
 		&timestampvm.GetBlockArgs{ID: blockID},
 		resp,
 	)
