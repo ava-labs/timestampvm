@@ -49,7 +49,7 @@ func TestHappyPath(t *testing.T) {
 	ctx := context.TODO()
 
 	// Initialize the vm
-	vm, ectx, msgChan, err := newTestVM()
+	vm, snowCtx, msgChan, err := newTestVM()
 	assert.NoError(err)
 
 	lastAcceptedID, err := vm.LastAccepted(ctx)
@@ -60,9 +60,9 @@ func TestHappyPath(t *testing.T) {
 	// in an actual execution, the engine would set the preference
 	assert.NoError(vm.SetPreference(ctx, genesisBlock.ID()))
 
-	ectx.Lock.Lock()
+	snowCtx.Lock.Lock()
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 1}) // propose a value
-	ectx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 
 	select { // assert there is a pending tx message to the engine
 	case msg := <-msgChan:
@@ -72,7 +72,7 @@ func TestHappyPath(t *testing.T) {
 	}
 
 	// build the block
-	ectx.Lock.Lock()
+	snowCtx.Lock.Lock()
 	snowmanBlock2, err := vm.BuildBlock(ctx)
 	assert.NoError(err)
 
@@ -94,7 +94,7 @@ func TestHappyPath(t *testing.T) {
 	assert.NoError(block2.Verify(ctx))
 
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 2}) // propose a block
-	ectx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 
 	select { // verify there is a pending tx message to the engine
 	case msg := <-msgChan:
@@ -103,7 +103,7 @@ func TestHappyPath(t *testing.T) {
 		assert.FailNow("should have been pendingTxs message on channel")
 	}
 
-	ectx.Lock.Lock()
+	snowCtx.Lock.Lock()
 
 	// build the block
 	snowmanBlock3, err := vm.BuildBlock(ctx)
@@ -133,7 +133,7 @@ func TestHappyPath(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(snowmanBlock3.ID(), block3FromState.ID())
 
-	ectx.Lock.Unlock()
+	snowCtx.Lock.Unlock()
 }
 
 func TestService(t *testing.T) {
@@ -172,8 +172,8 @@ func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
 	})
 	msgChan := make(chan common.Message, 1)
 	vm := &VM{}
-	ectx := snow.DefaultContextTest()
-	ectx.ChainID = blockchainID
-	err := vm.Initialize(context.TODO(), ectx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
-	return vm, ectx, msgChan, err
+	snowCtx := snow.DefaultContextTest()
+	snowCtx.ChainID = blockchainID
+	err := vm.Initialize(context.TODO(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	return vm, snowCtx, msgChan, err
 }
