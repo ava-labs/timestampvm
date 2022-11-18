@@ -15,14 +15,14 @@ _See [`tests/e2e`](tests/e2e) to see how it's set up and how its client requests
 ```bash
 # to startup a local cluster (good for development)
 cd ${HOME}/go/src/github.com/ava-labs/blobvm
-./scripts/run.sh 1.9.2
+./scripts/run.sh 1.9.3
 
 # to run full e2e tests and shut down cluster afterwards
 cd ${HOME}/go/src/github.com/ava-labs/blobvm
-E2E=true ./scripts/run.sh 1.9.2
+E2E=true ./scripts/run.sh 1.9.3
 
 # inspect cluster endpoints when ready
-cat /tmp/avalanchego-v1.9.2/output.yaml
+cat /tmp/avalanchego-v1.9.3/output.yaml
 <<COMMENT
 endpoint: /ext/bc/2VCAhX6vE3UnXC6s1CBPE6jJ4c4cHWMfPgCptuWS59pQ9vbeLM
 logsDir: ...
