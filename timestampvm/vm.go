@@ -36,8 +36,8 @@ var (
 	errBadGenesisBytes = errors.New("genesis data should be bytes (max length 32)")
 	Version            = &version.Semantic{
 		Major: 1,
-		Minor: 2,
-		Patch: 9,
+		Minor: 3,
+		Patch: 0,
 	}
 
 	_ block.ChainVM = &VM{}
@@ -48,7 +48,7 @@ var (
 // and a piece of data (a string)
 type VM struct {
 	// The context of this vm
-	ctx       *snow.Context
+	snowCtx   *snow.Context
 	dbManager manager.Manager
 
 	// State of this VM
@@ -82,7 +82,7 @@ type VM struct {
 // The data in the genesis block is [genesisData]
 func (vm *VM) Initialize(
 	ctx context.Context,
-	chainCtx *snow.Context,
+	snowCtx *snow.Context,
 	dbManager manager.Manager,
 	genesisData []byte,
 	upgradeData []byte,
@@ -99,7 +99,7 @@ func (vm *VM) Initialize(
 	log.Info("Initializing Timestamp VM", "Version", version)
 
 	vm.dbManager = dbManager
-	vm.ctx = chainCtx
+	vm.snowCtx = snowCtx
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]*Block)
 
@@ -117,7 +117,7 @@ func (vm *VM) Initialize(
 		return err
 	}
 
-	chainCtx.Log.Info("initializing last accepted block",
+	snowCtx.Log.Info("initializing last accepted block",
 		zap.Any("id", lastAccepted),
 	)
 
@@ -258,7 +258,7 @@ func (vm *VM) NotifyBlockReady() {
 	select {
 	case vm.toEngine <- common.PendingTxs:
 	default:
-		vm.ctx.Log.Debug("dropping message to consensus engine")
+		vm.snowCtx.Log.Debug("dropping message to consensus engine")
 	}
 }
 
