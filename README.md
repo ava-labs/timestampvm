@@ -8,17 +8,17 @@ TimestampVM defines a blockchain that is a timestamp server. Each block in the b
 
 ## Running the VM
 [`scripts/run.sh`](scripts/run.sh) automatically installs [avalanchego], sets up a local network,
-and creates a `blobvm` genesis file. To build and run E2E tests, you need to set the variable `E2E` before it: `E2E=true ./scripts/run.sh 1.7.11`
+and creates a `timestampvm` genesis file. To build and run E2E tests, you need to set the variable `E2E` before it: `E2E=true ./scripts/run.sh 1.7.11`
 
 _See [`tests/e2e`](tests/e2e) to see how it's set up and how its client requests are made._
 
 ```bash
 # to startup a local cluster (good for development)
-cd ${HOME}/go/src/github.com/ava-labs/blobvm
+cd ${HOME}/go/src/github.com/ava-labs/timestampvm
 ./scripts/run.sh 1.9.3
 
 # to run full e2e tests and shut down cluster afterwards
-cd ${HOME}/go/src/github.com/ava-labs/blobvm
+cd ${HOME}/go/src/github.com/ava-labs/timestampvm
 E2E=true ./scripts/run.sh 1.9.3
 
 # inspect cluster endpoints when ready
