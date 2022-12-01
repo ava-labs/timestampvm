@@ -29,13 +29,6 @@ TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
 # Load the versions
 source "$TIMESTAMPVM_PATH"/scripts/versions.sh
 
-VERSION=$1
-if [[ -z "${VERSION}" ]]; then
-  echo "Missing version argument!"
-  echo "Usage: ${0} [VERSION]" >> /dev/stderr
-  exit 255
-fi
-
 MODE=${MODE:-run}
 E2E=${E2E:-false}
 if [[ ${E2E} == true ]]; then
