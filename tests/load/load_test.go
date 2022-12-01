@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,6 +49,10 @@ var (
 	vmGenesisPath    string
 	vmConfigPath     string
 	subnetConfigPath string
+
+	// Specifies the full timestampvm client URIs to use instead of orchestrating
+	// a network with the network runner.
+	clientURIs string
 
 	terminalHeight uint64
 )
@@ -121,6 +126,13 @@ func init() {
 		1_000_000,
 		"height to quit at",
 	)
+
+	flag.StringVar(
+		&clientURIs,
+		"client-uris",
+		"",
+		"Specifies a comma separated list of full timestampvm client URIs to use in place of orchestrating a network. (Ex. 127.0.0.1:9650/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc,127.0.0.1:9652/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc",
+	)
 }
 
 const vmName = "timestamp"
@@ -145,11 +157,24 @@ var (
 )
 
 type instance struct {
-	uri string
-	cli client.Client
+	uri               string
+	timestampvmClient client.Client
 }
 
 var _ = ginkgo.BeforeSuite(func() {
+	if len(clientURIs) != 0 {
+		separatedClientURIs := strings.Split(clientURIs, ",")
+		instances = make([]instance, len(separatedClientURIs))
+		for i, clientURI := range separatedClientURIs {
+			instances[i] = instance{
+				uri:               clientURI,
+				timestampvmClient: client.New(clientURI),
+			}
+		}
+		outf("{{green}}creating timestampvm JSON RPC Clients:{{/}} %v\n", &separatedClientURIs)
+		return
+	}
+
 	logLevel, err := logging.ToLevel(networkRunnerLogLevel)
 	gomega.Expect(err).Should(gomega.BeNil())
 	logFactory := logging.NewFactory(logging.Config{
@@ -267,15 +292,19 @@ done:
 	for i := range uris {
 		u := uris[i] + fmt.Sprintf("/ext/bc/%s", blockchainID)
 		instances[i] = instance{
-			uri: u,
-			cli: client.New(u),
+			uri:               u,
+			timestampvmClient: client.New(u),
 		}
 	}
 
-	defer outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
+	outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
 })
 
 var _ = ginkgo.AfterSuite(func() {
+	// If clientURIs were manually specified, skip killing the network.
+	if len(clientURIs) != 0 {
+		return
+	}
 	outf("{{red}}shutting down cluster{{/}}\n")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	_, err := cli.Stop(ctx)
@@ -289,11 +318,12 @@ var _ = ginkgo.AfterSuite(func() {
 	log.Warn("client shutdown result", "err", err)
 })
 
+// Tests only assumes that [instances] has been populated by BeforeSuite
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	ginkgo.It("get genesis block", func() {
 		for _, inst := range instances {
-			cli := inst.cli
-			timestamp, data, height, _, _, err := cli.GetBlock(context.Background(), nil)
+			client := inst.timestampvmClient
+			timestamp, data, height, _, _, err := client.GetBlock(context.Background(), nil)
 			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
 			gomega.Ω(data).Should(gomega.Equal(timestampvm.BytesToData([]byte("e2e"))))
 			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
@@ -305,7 +335,7 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		g, gctx := errgroup.WithContext(ctx)
 		for _, instance := range instances {
-			cli := instance.cli
+			client := instance.timestampvmClient
 			g.Go(func() error {
 				defer ginkgo.GinkgoRecover()
 
@@ -314,7 +344,7 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 					data := [timestampvm.DataLen]byte{}
 					_, err := rand.Read(data[:])
 					gomega.Ω(err).Should(gomega.BeNil())
-					success, err := cli.ProposeBlock(gctx, data)
+					success, err := client.ProposeBlock(gctx, data)
 					gomega.Ω(err).Should(gomega.BeNil())
 					if success && delay > 0 {
 						delay -= backoffDur
@@ -334,10 +364,10 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 		g.Go(func() error {
 			defer ginkgo.GinkgoRecover()
 
-			cli := instances[0].cli
+			client := instances[0].timestampvmClient
 			last := uint64(0)
 			for gctx.Err() == nil {
-				_, _, lastHeight, _, _, err := cli.GetBlock(gctx, nil)
+				_, _, lastHeight, _, _, err := client.GetBlock(gctx, nil)
 				if err != nil {
 					continue
 				}
