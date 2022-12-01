@@ -357,7 +357,13 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 					}
 					time.Sleep(delay)
 				}
-				return gctx.Err()
+
+				// Context is only cancelled by reaching terminal height, which indicates the test passed,
+				// so we drop that error here.
+				if err := gctx.Err(); err != context.Canceled {
+					return err
+				}
+				return nil
 			})
 		}
 		start := time.Now()

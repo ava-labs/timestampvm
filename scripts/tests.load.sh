@@ -16,12 +16,12 @@ if ! [[ "$0" =~ scripts/tests.load.sh ]]; then
   exit 255
 fi
 
-VERSION=$1
-if [[ -z "${VERSION}" ]]; then
-  echo "Missing version argument!"
-  echo "Usage: ${0} [VERSION]" >> /dev/stderr
-  exit 255
-fi
+# TimestampVM root directory
+TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+TERMINAL_HEIGHT=${TERMINAL_HEIGHT:-'1000000'}
+
+# Load the versions
+source "$TIMESTAMPVM_PATH"/scripts/versions.sh
 
 # PWD is used in the avalanchego build script so we use a different var
 PPWD=$(pwd)
@@ -33,7 +33,7 @@ mkdir ${ROOT_PATH}
 cd ${ROOT_PATH}
 git clone https://github.com/ava-labs/avalanchego.git
 cd avalanchego
-git checkout v${VERSION}
+git checkout ${avalanche_version}
 # We build AvalancheGo manually instead of downloading binaries
 # because the machine code will be better optimized for the local environment
 #
@@ -115,7 +115,7 @@ echo "running load tests"
 --vm-genesis-path=${ROOT_PATH}/.genesis \
 --vm-config-path=${ROOT_PATH}/.config \
 --subnet-config-path=${ROOT_PATH}/.subnet \
---terminal-height=1000000
+--terminal-height=${TERMINAL_HEIGHT}
 
 ############################
 # load.test" already terminates the cluster
