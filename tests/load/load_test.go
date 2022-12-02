@@ -6,7 +6,6 @@ package load_test
 
 import (
 	"context"
-	"crypto/rand"
 	"flag"
 	"fmt"
 	"strings"
@@ -17,24 +16,16 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/timestampvm/tests/load/client"
-	"github.com/ava-labs/timestampvm/timestampvm"
 	log "github.com/inconshreveable/log15"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/gomega"
-	"golang.org/x/sync/errgroup"
 )
 
 func TestLoad(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "timestampvm load test suites")
 }
-
-const (
-	backoffDur = 50 * time.Millisecond
-	maxBackoff = 5 * time.Second
-)
 
 var (
 	requestTimeout time.Duration
@@ -50,9 +41,12 @@ var (
 	vmConfigPath     string
 	subnetConfigPath string
 
-	// Specifies the full timestampvm client URIs to use instead of orchestrating
-	// a network with the network runner.
-	clientURIs string
+	// Comma separated list of client URIs
+	// If the length is non-zero, this will skip using the network runner to start and stop a network.
+	commaSeparatedClientURIs string
+	// Specifies the full timestampvm client URIs to use for load test.
+	// Populated in BeforeSuite
+	clientURIs []string
 
 	terminalHeight uint64
 )
@@ -128,7 +122,7 @@ func init() {
 	)
 
 	flag.StringVar(
-		&clientURIs,
+		&commaSeparatedClientURIs,
 		"client-uris",
 		"",
 		"Specifies a comma separated list of full timestampvm client URIs to use in place of orchestrating a network. (Ex. 127.0.0.1:9650/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc,127.0.0.1:9652/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc",
@@ -153,25 +147,12 @@ func init() {
 var (
 	cli               runner_sdk.Client
 	timestampvmRPCEps []string
-	instances         []instance
 )
 
-type instance struct {
-	uri               string
-	timestampvmClient client.Client
-}
-
 var _ = ginkgo.BeforeSuite(func() {
-	if len(clientURIs) != 0 {
-		separatedClientURIs := strings.Split(clientURIs, ",")
-		instances = make([]instance, len(separatedClientURIs))
-		for i, clientURI := range separatedClientURIs {
-			instances[i] = instance{
-				uri:               clientURI,
-				timestampvmClient: client.New(clientURI),
-			}
-		}
-		outf("{{green}}creating timestampvm JSON RPC Clients:{{/}} %v\n", &separatedClientURIs)
+	if len(commaSeparatedClientURIs) != 0 {
+		clientURIs = strings.Split(commaSeparatedClientURIs, ",")
+		outf("{{green}}creating %d clients from manually specified URIs:{{/}}\n", len(clientURIs))
 		return
 	}
 
@@ -282,27 +263,14 @@ done:
 	gomega.Expect(err).Should(gomega.BeNil())
 	outf("{{blue}}avalanche HTTP RPCs URIs:{{/}} %q\n", uris)
 
-	for _, u := range uris {
-		rpcEP := fmt.Sprintf("%s/ext/bc/%s/rpc", u, blockchainID)
-		timestampvmRPCEps = append(timestampvmRPCEps, rpcEP)
-		outf("{{blue}}avalanche timestampvm RPC:{{/}} %q\n", rpcEP)
-	}
-
-	instances = make([]instance, len(uris))
-	for i := range uris {
-		u := uris[i] + fmt.Sprintf("/ext/bc/%s", blockchainID)
-		instances[i] = instance{
-			uri:               u,
-			timestampvmClient: client.New(u),
-		}
-	}
+	clientURIs = uris
 
 	outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
 })
 
 var _ = ginkgo.AfterSuite(func() {
 	// If clientURIs were manually specified, skip killing the network.
-	if len(clientURIs) != 0 {
+	if len(commaSeparatedClientURIs) != 0 {
 		return
 	}
 	outf("{{red}}shutting down cluster{{/}}\n")
@@ -320,78 +288,13 @@ var _ = ginkgo.AfterSuite(func() {
 
 // Tests only assumes that [instances] has been populated by BeforeSuite
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
-	ginkgo.It("get genesis block", func() {
-		for _, inst := range instances {
-			client := inst.timestampvmClient
-			timestamp, data, height, _, _, err := client.GetBlock(context.Background(), nil)
-			gomega.Ω(timestamp).Should(gomega.Equal(uint64(0)))
-			gomega.Ω(data).Should(gomega.Equal(timestampvm.BytesToData([]byte("e2e"))))
-			gomega.Ω(height).Should(gomega.Equal(uint64(0)))
-			gomega.Ω(err).Should(gomega.BeNil())
-		}
-	})
+	ginkgo.It("load test", func() {
+		workers := newLoadWorkers(clientURIs)
+		ctx := context.Background()
 
-	ginkgo.It("create new blocks", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		g, gctx := errgroup.WithContext(ctx)
-		for _, instance := range instances {
-			client := instance.timestampvmClient
-			g.Go(func() error {
-				defer ginkgo.GinkgoRecover()
-
-				delay := time.Duration(0)
-				for gctx.Err() == nil {
-					data := [timestampvm.DataLen]byte{}
-					_, err := rand.Read(data[:])
-					gomega.Ω(err).Should(gomega.BeNil())
-					success, err := client.ProposeBlock(gctx, data)
-					gomega.Ω(err).Should(gomega.BeNil())
-					if success && delay > 0 {
-						delay -= backoffDur
-					} else if !success && delay < maxBackoff {
-						// If the mempool is full, pause before submitting more data
-						//
-						// TODO: in a robust testing scenario, we'd want to resubmit this
-						// data to avoid loss
-						delay += backoffDur
-					}
-					time.Sleep(delay)
-				}
-
-				// Context is only cancelled by reaching terminal height, which indicates the test passed,
-				// so we drop that error here.
-				if err := gctx.Err(); err != context.Canceled {
-					return err
-				}
-				return nil
-			})
-		}
-		start := time.Now()
-		g.Go(func() error {
-			defer ginkgo.GinkgoRecover()
-
-			client := instances[0].timestampvmClient
-			last := uint64(0)
-			for gctx.Err() == nil {
-				_, _, lastHeight, _, _, err := client.GetBlock(gctx, nil)
-				if err != nil {
-					continue
-				}
-				log.Info("Stats", "height", lastHeight,
-					"avg bps", float64(lastHeight)/time.Since(start).Seconds(),
-					"last bps", float64(lastHeight-last)/3.0,
-				)
-				if lastHeight > terminalHeight {
-					log.Info("exiting at terminal height")
-					cancel()
-					return nil
-				}
-				last = lastHeight
-				time.Sleep(3 * time.Second)
-			}
-			return gctx.Err()
-		})
-		log.Warn("exiting producer loop", "err", g.Wait())
+		err := RunLoadTest(ctx, workers, terminalHeight, 0)
+		gomega.Ω(err).Should(gomega.BeNil())
+		log.Info("Load test completed successfully")
 	})
 })
 
