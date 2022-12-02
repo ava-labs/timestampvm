@@ -286,7 +286,7 @@ var _ = ginkgo.AfterSuite(func() {
 	log.Warn("client shutdown result", "err", err)
 })
 
-// Tests only assumes that [instances] has been populated by BeforeSuite
+// Tests only assumes that [clientURIs] has been populated by BeforeSuite
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	ginkgo.It("load test", func() {
 		workers := newLoadWorkers(clientURIs, blockchainID)
