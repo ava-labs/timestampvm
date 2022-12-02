@@ -49,6 +49,9 @@ var (
 	clientURIs []string
 
 	terminalHeight uint64
+
+	blockchainID string
+	logsDir      string
 )
 
 func init() {
@@ -220,7 +223,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	timestampvmRPCEps = make([]string, 0)
-	blockchainID, logsDir := "", ""
 
 	// wait up to 5-minute for custom VM installation
 	outf("\n{{magenta}}waiting for all custom VMs to report healthy...{{/}}\n")
@@ -287,10 +289,9 @@ var _ = ginkgo.AfterSuite(func() {
 // Tests only assumes that [instances] has been populated by BeforeSuite
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	ginkgo.It("load test", func() {
-		workers := newLoadWorkers(clientURIs)
-		ctx := context.Background()
+		workers := newLoadWorkers(clientURIs, blockchainID)
 
-		err := RunLoadTest(ctx, workers, terminalHeight, 0)
+		err := RunLoadTest(context.Background(), workers, terminalHeight, 2*time.Minute)
 		gomega.Ω(err).Should(gomega.BeNil())
 		log.Info("Load test completed successfully")
 	})

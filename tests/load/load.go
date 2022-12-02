@@ -39,16 +39,17 @@ type timestampvmLoadWorker struct {
 	client.Client
 }
 
-func newLoadWorkers(uris []string) []Worker {
+func newLoadWorkers(uris []string, blockchainID string) []Worker {
 	workers := make([]Worker, 0, len(uris))
 	for _, uri := range uris {
-		workers = append(workers, newLoadWorker(uri))
+		workers = append(workers, newLoadWorker(uri, blockchainID))
 	}
 
 	return workers
 }
 
-func newLoadWorker(uri string) *timestampvmLoadWorker {
+func newLoadWorker(uri string, blockchainID string) *timestampvmLoadWorker {
+	uri = fmt.Sprintf("%s/ext/bc/%s", uri, blockchainID)
 	return &timestampvmLoadWorker{
 		uri:    uri,
 		Client: client.New(uri),
@@ -117,11 +118,13 @@ func RunLoadTest(ctx context.Context, workers []Worker, terminalHeight uint64, m
 	for {
 		startHeight, err = worker.GetLastAcceptedHeight(ctx)
 		if err != nil {
+			log.Warn("Failed to get last accepted height", "err", err, "worker", worker.Name())
 			time.Sleep(3 * time.Second)
 			continue
 		}
 		break
 	}
+	log.Info("Running load test", "numWorkers", len(workers), "terminalHeight", terminalHeight, "maxDuration", maxDuration)
 
 	if maxDuration != 0 {
 		ctx, cancel = context.WithTimeout(ctx, maxDuration)
