@@ -34,7 +34,7 @@ type Worker interface {
 	GetLastAcceptedHeight(ctx context.Context) (uint64, error)
 }
 
-// timestampvmLoadWorker implements the LoadWorker interface and adds continous load through its client.
+// timestampvmLoadWorker implements the LoadWorker interface and adds continuous load through its client.
 type timestampvmLoadWorker struct {
 	uri string
 	client.Client
@@ -90,7 +90,6 @@ func (t *timestampvmLoadWorker) AddLoad(ctx context.Context, quit <-chan struct{
 			delay += backoffDur
 		}
 		time.Sleep(delay)
-		return nil
 	}
 }
 
