@@ -106,15 +106,21 @@ func RunLoadTest(ctx context.Context, workers []Worker, terminalHeight uint64, m
 	}
 
 	var (
-		quit   = make(chan struct{})
-		cancel context.CancelFunc
-		start  = time.Now()
-		worker = workers[0]
+		quit        = make(chan struct{})
+		cancel      context.CancelFunc
+		start       = time.Now()
+		worker      = workers[0]
+		startHeight = uint64(0)
+		err         error
 	)
 
-	startHeight, err := worker.GetLastAcceptedHeight(ctx)
-	if err != nil {
-		return err
+	for {
+		startHeight, err = worker.GetLastAcceptedHeight(ctx)
+		if err != nil {
+			time.Sleep(3 * time.Second)
+			continue
+		}
+		break
 	}
 
 	if maxDuration != 0 {
