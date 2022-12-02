@@ -158,6 +158,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		outf("{{green}}creating %d clients from manually specified URIs:{{/}}\n", len(clientURIs))
 		return
 	}
+	
 
 	logLevel, err := logging.ToLevel(networkRunnerLogLevel)
 	gomega.Expect(err).Should(gomega.BeNil())
