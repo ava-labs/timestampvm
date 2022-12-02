@@ -154,7 +154,7 @@ func RunLoadTest(ctx context.Context, workers []Worker, terminalHeight uint64, m
 			time.Sleep(3 * time.Second)
 		}
 
-		return egCtx.Err()
+		return fmt.Errorf("failed to reach terminal height: %w", egCtx.Err())
 	})
 
 	return eg.Wait()

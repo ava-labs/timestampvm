@@ -216,8 +216,11 @@ var _ = ginkgo.BeforeSuite(func() {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		// TODO: clean this up
-		gomega.Expect(err).Should(gomega.BeNil())
+		resp, err := cli.Status(context.Background())
+		if err != nil || !resp.ClusterInfo.CustomChainsHealthy {
+			time.Sleep(1 * time.Second)
+			continue
+		}
 		break
 	}
 
