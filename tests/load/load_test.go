@@ -211,13 +211,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	// "start" is async, so wait some time for cluster health
 	outf("\n{{magenta}}waiting for all vms to report healthy...{{/}}: %s\n", vmID)
 	for {
-		_, err = cli.Health(context.Background())
-		if err != nil {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		resp, err := cli.Status(context.Background())
-		if err != nil || !resp.ClusterInfo.CustomChainsHealthy {
+		healthRes, err := cli.Health(context.Background())
+		if err != nil || !healthRes.ClusterInfo.Healthy {
 			time.Sleep(1 * time.Second)
 			continue
 		}
