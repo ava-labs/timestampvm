@@ -26,11 +26,10 @@ var _ Worker = (*timestampvmLoadWorker)(nil)
 type Worker interface {
 	// Name returns the name of the worker
 	Name() string
-	// AddLoad adds load to the underlying network.
-	// Returns nil when the quit channel is closed.
-	// Returns an error if the context errors.
+	// AddLoad adds load to the underlying network of the worker.
+	// Terminates without an error if the quit channel is closed.
 	AddLoad(ctx context.Context, quit <-chan struct{}) error
-	// GetLastAcceptedHeight returns the height of the last accepted block
+	// GetLastAcceptedHeight returns the height of the last accepted block.
 	GetLastAcceptedHeight(ctx context.Context) (uint64, error)
 }
 
@@ -57,7 +56,7 @@ func newLoadWorker(uri string) *timestampvmLoadWorker {
 }
 
 func (t *timestampvmLoadWorker) Name() string {
-	return t.uri
+	return fmt.Sprintf("TimestampVM RPC Worker %s", t.uri)
 }
 
 func (t *timestampvmLoadWorker) AddLoad(ctx context.Context, quit <-chan struct{}) error {
@@ -67,18 +66,18 @@ func (t *timestampvmLoadWorker) AddLoad(ctx context.Context, quit <-chan struct{
 		case <-quit:
 			return nil
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("%s finished: %w", t.Name(), ctx.Err())
 		default:
 		}
 
 		data := [timestampvm.DataLen]byte{}
 		_, err := rand.Read(data[:])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read random data: %w", err)
 		}
 		success, err := t.ProposeBlock(ctx, data)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s failed: %w", t.Name(), err)
 		}
 		if success && delay > 0 {
 			delay -= backoffDur

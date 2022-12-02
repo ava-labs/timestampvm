@@ -38,7 +38,7 @@ fi
 AVALANCHE_LOG_LEVEL=${AVALANCHE_LOG_LEVEL:-INFO}
 
 echo "Running with:"
-echo AVALANCHE_VERSION: ${avalanche_version}
+echo avalanche_version: ${avalanche_version}
 echo MODE: ${MODE}
 
 ############################
@@ -47,7 +47,7 @@ echo MODE: ${MODE}
 GOARCH=$(go env GOARCH)
 GOOS=$(go env GOOS)
 AVALANCHEGO_PATH=/tmp/avalanchego-${avalanche_version}/avalanchego
-AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-v${VERSION}/plugins
+AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-${avalanche_version}/plugins
 
 if [ ! -f "$AVALANCHEGO_PATH" ]; then
   DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/${avalanche_version}/avalanchego-linux-${GOARCH}-${avalanche_version}.tar.gz
