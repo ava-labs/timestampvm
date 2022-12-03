@@ -48,6 +48,25 @@ jobs:
           go-version: 1.19
       - name: Run e2e tests
         shell: bash
-        run: scripts/run.sh 1.9.3
+        run: scripts/run.sh
         env:
           E2E: true
+  
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - name: Run load tests
+        shell: bash
+        run: scripts/tests.load.sh
+        env:
+          TERMINAL_HEIGHT: 1000 # Set the terminal height for the load test to reach before terminating.

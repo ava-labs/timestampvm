@@ -23,12 +23,11 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
   exit 255
 fi
 
-VERSION=$1
-if [[ -z "${VERSION}" ]]; then
-  echo "Missing version argument!"
-  echo "Usage: ${0} [VERSION]" >> /dev/stderr
-  exit 255
-fi
+# TimestampVM root directory
+TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+
+# Load the versions
+source "$TIMESTAMPVM_PATH"/scripts/versions.sh
 
 MODE=${MODE:-run}
 E2E=${E2E:-false}
@@ -39,7 +38,7 @@ fi
 AVALANCHE_LOG_LEVEL=${AVALANCHE_LOG_LEVEL:-INFO}
 
 echo "Running with:"
-echo VERSION: ${VERSION}
+echo avalanche_version: ${avalanche_version}
 echo MODE: ${MODE}
 
 ############################
@@ -47,22 +46,22 @@ echo MODE: ${MODE}
 # https://github.com/ava-labs/avalanchego/releases
 GOARCH=$(go env GOARCH)
 GOOS=$(go env GOOS)
-AVALANCHEGO_PATH=/tmp/avalanchego-v${VERSION}/avalanchego
-AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-v${VERSION}/plugins
+AVALANCHEGO_PATH=/tmp/avalanchego-${avalanche_version}/avalanchego
+AVALANCHEGO_PLUGIN_DIR=/tmp/avalanchego-${avalanche_version}/plugins
 
 if [ ! -f "$AVALANCHEGO_PATH" ]; then
-  DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-linux-${GOARCH}-v${VERSION}.tar.gz
+  DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/${avalanche_version}/avalanchego-linux-${GOARCH}-${avalanche_version}.tar.gz
   DOWNLOAD_PATH=/tmp/avalanchego.tar.gz
   if [[ ${GOOS} == "darwin" ]]; then
-    DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/v${VERSION}/avalanchego-macos-v${VERSION}.zip
+    DOWNLOAD_URL=https://github.com/ava-labs/avalanchego/releases/download/${avalanche_version}/avalanchego-macos-${avalanche_version}.zip
     DOWNLOAD_PATH=/tmp/avalanchego.zip
   fi
 
-  rm -rf /tmp/avalanchego-v${VERSION}
+  rm -rf /tmp/avalanchego-${avalanche_version}
   rm -rf /tmp/avalanchego-build
   rm -f ${DOWNLOAD_PATH}
 
-  echo "downloading avalanchego ${VERSION} at ${DOWNLOAD_URL}"
+  echo "downloading avalanchego ${avalanche_version} at ${DOWNLOAD_URL}"
   curl -L ${DOWNLOAD_URL} -o ${DOWNLOAD_PATH}
 
   echo "extracting downloaded avalanchego"
@@ -70,9 +69,9 @@ if [ ! -f "$AVALANCHEGO_PATH" ]; then
     tar xzvf ${DOWNLOAD_PATH} -C /tmp
   elif [[ ${GOOS} == "darwin" ]]; then
     unzip ${DOWNLOAD_PATH} -d /tmp/avalanchego-build
-    mv /tmp/avalanchego-build/build /tmp/avalanchego-v${VERSION}
+    mv /tmp/avalanchego-build/build /tmp/avalanchego-${avalanche_version}
   fi
-  find /tmp/avalanchego-v${VERSION}
+  find /tmp/avalanchego-${avalanche_version}
 fi
 
 ############################
@@ -81,12 +80,12 @@ fi
 echo "building timestampvm"
 
 # delete previous (if exists)
-rm -f /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
+rm -f /tmp/avalanchego-${avalanche_version}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 
 go build \
--o /tmp/avalanchego-v${VERSION}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+-o /tmp/avalanchego-${avalanche_version}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
 ./main/
-find /tmp/avalanchego-v${VERSION}
+find /tmp/avalanchego-${avalanche_version}
 
 ############################
 
@@ -149,14 +148,14 @@ echo "running e2e tests"
 --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
 --vm-genesis-path=/tmp/.genesis \
 --vm-config-path=/tmp/.config \
---output-path=/tmp/avalanchego-v${VERSION}/output.yaml \
+--output-path=/tmp/avalanchego-${avalanche_version}/output.yaml \
 --mode=${MODE}
 STATUS=$?
 
 ############################
-if [[ -f "/tmp/avalanchego-v${VERSION}/output.yaml" ]]; then
+if [[ -f "/tmp/avalanchego-${avalanche_version}/output.yaml" ]]; then
   echo "cluster is ready!"
-  cat /tmp/avalanchego-v${VERSION}/output.yaml
+  cat /tmp/avalanchego-${avalanche_version}/output.yaml
 else
   echo "cluster is not ready in time... terminating ${PID}"
   kill ${PID}
