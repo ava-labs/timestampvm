@@ -25,13 +25,15 @@ var (
 type StaticNetwork interface {
 	CreateDefault(context.Context) error
 	URIs(context.Context) ([]string, error)
+	BlockchainIDs(context.Context) ([]string, error)
 	Teardown(context.Context) error
 }
 
 // existingNetwork implements the StaticNetwork interface and assumes that the network
 // has already been constructed and does not require any startup/teardown.
 type existingNetwork struct {
-	uris []string
+	uris          []string
+	blockchainIDs []string
 }
 
 func NewExistingNetwork(uris []string) *existingNetwork {
@@ -42,7 +44,10 @@ func NewExistingNetwork(uris []string) *existingNetwork {
 
 func (e *existingNetwork) CreateDefault(context.Context) error    { return nil }
 func (e *existingNetwork) URIs(context.Context) ([]string, error) { return e.uris, nil }
-func (e *existingNetwork) Teardown(context.Context) error         { return nil }
+func (e *existingNetwork) BlockchainIDs(context.Context) ([]string, error) {
+	return e.blockchainIDs, nil
+}
+func (e *existingNetwork) Teardown(context.Context) error { return nil }
 
 type NetworkRunnerConfig struct { //nolint
 	NetworkRunnerLogLevel string                  `json:"network-runner-log-level"`
@@ -103,7 +108,7 @@ func (n *networkRunner) CreateDefault(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Successfully started", "node names", resp.ClusterInfo.NodeNames)
+	log.Info("Successfully started", "Names", resp.ClusterInfo.NodeNames, "RootDataDir", resp.ClusterInfo.RootDataDir)
 
 	// TODO: network runner health should imply custom VM healthiness
 	// or provide a separate API for custom VM healthiness
@@ -123,6 +128,19 @@ func (n *networkRunner) CreateDefault(ctx context.Context) error {
 
 func (n *networkRunner) URIs(ctx context.Context) ([]string, error) {
 	return n.client.URIs(ctx)
+}
+
+func (n *networkRunner) BlockchainIDs(ctx context.Context) ([]string, error) {
+	status, err := n.client.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	blockchainIDs := make([]string, 0, len(status.ClusterInfo.CustomChains))
+	for blockchainID := range status.ClusterInfo.CustomChains {
+		blockchainIDs = append(blockchainIDs, blockchainID)
+	}
+	return blockchainIDs, nil
 }
 
 func (n *networkRunner) Teardown(ctx context.Context) error {

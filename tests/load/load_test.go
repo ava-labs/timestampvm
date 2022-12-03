@@ -15,7 +15,7 @@ import (
 	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/timestampvm/tests/network"
 	log "github.com/inconshreveable/log15"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
@@ -28,74 +28,59 @@ func TestLoad(t *testing.T) {
 }
 
 var (
-	requestTimeout time.Duration
-
-	networkRunnerLogLevel string
-	gRPCEp                string
-	gRPCGatewayEp         string
-
-	execPath  string
-	pluginDir string
-
 	vmGenesisPath    string
 	vmConfigPath     string
 	subnetConfigPath string
 
 	// Comma separated list of client URIs
 	// If the length is non-zero, this will skip using the network runner to start and stop a network.
-	commaSeparatedClientURIs string
+	commaSeparatedClientURIs    string
+	commaSeparatedBlockchainIDs string
 	// Specifies the full timestampvm client URIs to use for load test.
 	// Populated in BeforeSuite
-	clientURIs []string
+	clientURIs    []string
+	blockchainIDs []string
 
 	terminalHeight uint64
+	numBlockchains int
 
-	blockchainID string
-	logsDir      string
+	// testNetwork provides the static network to execute the load test on.
+	// Set in BeforeSuite and taken down in AfterSuite.
+	testNetwork network.StaticNetwork
+	config      network.NetworkRunnerConfig
 )
 
 func init() {
-	flag.DurationVar(
-		&requestTimeout,
-		"request-timeout",
-		120*time.Second,
-		"timeout for transaction issuance and confirmation",
-	)
-
+	// Network runner flags
 	flag.StringVar(
-		&networkRunnerLogLevel,
+		&config.NetworkRunnerLogLevel,
 		"network-runner-log-level",
 		"info",
 		"gRPC server endpoint",
 	)
 
 	flag.StringVar(
-		&gRPCEp,
+		&config.NetworkRunnerEndpoint,
 		"network-runner-grpc-endpoint",
 		"0.0.0.0:8080",
 		"gRPC server endpoint",
 	)
-	flag.StringVar(
-		&gRPCGatewayEp,
-		"network-runner-grpc-gateway-endpoint",
-		"0.0.0.0:8081",
-		"gRPC gateway endpoint",
-	)
 
 	flag.StringVar(
-		&execPath,
+		&config.AvalancheGoExecPath,
 		"avalanchego-path",
 		"",
 		"avalanchego executable path",
 	)
 
 	flag.StringVar(
-		&pluginDir,
+		&config.PluginDir,
 		"avalanchego-plugin-dir",
 		"",
 		"avalanchego plugin directory",
 	)
 
+	// Blockchain specification arguments
 	flag.StringVar(
 		&vmGenesisPath,
 		"vm-genesis-path",
@@ -117,18 +102,32 @@ func init() {
 		"Subnet configfile path",
 	)
 
+	// Test parameters
 	flag.Uint64Var(
 		&terminalHeight,
 		"terminal-height",
 		1_000_000,
 		"height to quit at",
 	)
+	flag.IntVar(
+		&numBlockchains,
+		"num-blockchains",
+		1,
+		"Sets the number of blockchains to create and throughput test.",
+	)
 
+	// Override flag to set the client URIs manually instead of constructing a network.
 	flag.StringVar(
 		&commaSeparatedClientURIs,
 		"client-uris",
 		"",
 		"Specifies a comma separated list of full timestampvm client URIs to use in place of orchestrating a network. (Ex. 127.0.0.1:9650/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc,127.0.0.1:9652/ext/bc/q2aTwKuyzgs8pynF7UXBZCU7DejbZbZ6EUyHr3JQzYgwNPUPi/rpc",
+	)
+	flag.StringVar(
+		&commaSeparatedBlockchainIDs,
+		"blockchain-ids",
+		"",
+		"Specifies a set of blockchainIDs on which to perform a throughput test (assumes all clients are validating every blockchainID). Must be populaeted if client-uris is populated.",
 	)
 }
 
@@ -155,142 +154,45 @@ var (
 var _ = ginkgo.BeforeSuite(func() {
 	if len(commaSeparatedClientURIs) != 0 {
 		clientURIs = strings.Split(commaSeparatedClientURIs, ",")
+		blockchainIDs = strings.Split(commaSeparatedBlockchainIDs, ",")
+
 		outf("{{green}}creating %d clients from manually specified URIs:{{/}}\n", len(clientURIs))
+		testNetwork = network.NewExistingNetwork(clientURIs)
 		return
 	}
-	
 
-	logLevel, err := logging.ToLevel(networkRunnerLogLevel)
-	gomega.Expect(err).Should(gomega.BeNil())
-	logFactory := logging.NewFactory(logging.Config{
-		DisplayLevel: logLevel,
-		LogLevel:     logLevel,
-	})
-	log, err := logFactory.Make("main")
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	cli, err = runner_sdk.New(runner_sdk.Config{
-		Endpoint:    gRPCEp,
-		DialTimeout: 10 * time.Second,
-	}, log)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	ginkgo.By("calling start API via network runner", func() {
-		outf("{{green}}sending 'start' with binary path:{{/}} %q (%q)\n", execPath, vmID)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		resp, err := cli.Start(
-			ctx,
-			execPath,
-			runner_sdk.WithPluginDir(pluginDir),
-			runner_sdk.WithBlockchainSpecs(
-				[]*rpcpb.BlockchainSpec{
-					{
-						VmName:       vmName,
-						Genesis:      vmGenesisPath,
-						ChainConfig:  vmConfigPath,
-						SubnetConfig: subnetConfigPath,
-					},
-				},
-			),
-			// Disable all rate limiting
-			runner_sdk.WithGlobalNodeConfig(`{
-				"log-level":"warn",
-				"proposervm-use-current-height":true,
-				"throttler-inbound-validator-alloc-size":"107374182",
-				"throttler-inbound-node-max-processing-msgs":"100000",
-				"throttler-inbound-bandwidth-refill-rate":"1073741824",
-				"throttler-inbound-bandwidth-max-burst-size":"1073741824",
-				"throttler-inbound-cpu-validator-alloc":"100000",
-				"throttler-inbound-disk-validator-alloc":"10737418240000",
-				"throttler-outbound-validator-alloc-size":"107374182"
-			}`),
-		)
-		cancel()
-		gomega.Expect(err).Should(gomega.BeNil())
-		outf("{{green}}successfully started:{{/}} %+v\n", resp.ClusterInfo.NodeNames)
-	})
-
-	// TODO: network runner health should imply custom VM healthiness
-	// or provide a separate API for custom VM healthiness
-	// "start" is async, so wait some time for cluster health
-	outf("\n{{magenta}}waiting for all vms to report healthy...{{/}}: %s\n", vmID)
-	for {
-		healthRes, err := cli.Health(context.Background())
-		if err != nil || !healthRes.ClusterInfo.Healthy {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
+	// Create [numBlockchains] as specified
+	for i := 0; i < numBlockchains; i++ {
+		config.BlockchainSpecs = append(config.BlockchainSpecs, &rpcpb.BlockchainSpec{
+			VmName:       vmName,
+			Genesis:      vmGenesisPath,
+			ChainConfig:  vmConfigPath,
+			SubnetConfig: subnetConfigPath,
+		})
 	}
 
-	timestampvmRPCEps = make([]string, 0)
-
-	// wait up to 5-minute for custom VM installation
-	outf("\n{{magenta}}waiting for all custom VMs to report healthy...{{/}}\n")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-done:
-	for ctx.Err() == nil {
-		select {
-		case <-ctx.Done():
-			break done
-		case <-time.After(5 * time.Second):
-		}
-
-		cctx, ccancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		resp, err := cli.Status(cctx)
-		ccancel()
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// all logs are stored under root data dir
-		logsDir = resp.GetClusterInfo().GetRootDataDir()
-
-		for _, v := range resp.ClusterInfo.CustomChains {
-			if v.VmId == vmID.String() {
-				blockchainID = v.ChainId
-				outf("{{blue}}timestampvm is ready:{{/}} %+v\n", v)
-				break done
-			}
-		}
-	}
-	gomega.Expect(ctx.Err()).Should(gomega.BeNil())
-	cancel()
-
-	gomega.Expect(blockchainID).Should(gomega.Not(gomega.BeEmpty()))
-	gomega.Expect(logsDir).Should(gomega.Not(gomega.BeEmpty()))
-
-	cctx, ccancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	uris, err := cli.URIs(cctx)
-	ccancel()
+	runner, err := network.NewStaticNetworkRunnerNetwork(config)
 	gomega.Expect(err).Should(gomega.BeNil())
-	outf("{{blue}}avalanche HTTP RPCs URIs:{{/}} %q\n", uris)
 
-	clientURIs = uris
+	err = runner.CreateDefault(context.Background())
+	gomega.Expect(err).Should(gomega.BeNil())
 
-	outf("{{magenta}}logs dir:{{/}} %s\n", logsDir)
+	blockchainIDs, err = runner.BlockchainIDs(context.Background())
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(blockchainIDs).Should(gomega.Not(gomega.BeEmpty()))
 })
 
 var _ = ginkgo.AfterSuite(func() {
-	// If clientURIs were manually specified, skip killing the network.
-	if len(commaSeparatedClientURIs) != 0 {
-		return
-	}
-	outf("{{red}}shutting down cluster{{/}}\n")
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	_, err := cli.Stop(ctx)
-	cancel()
+	log.Info("Tearing down network")
+	err := testNetwork.Teardown(context.Background())
 	gomega.Expect(err).Should(gomega.BeNil())
-	log.Warn("cluster shutdown result", "err", err)
-
-	outf("{{red}}shutting down client{{/}}\n")
-	err = cli.Close()
-	gomega.Expect(err).Should(gomega.BeNil())
-	log.Warn("client shutdown result", "err", err)
+	log.Info("Finished tearing down network.")
 })
 
 // Tests only assumes that [instances] has been populated by BeforeSuite
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	ginkgo.It("load test", func() {
-		workers := newLoadWorkers(clientURIs, blockchainID)
+		workers := newLoadWorkers(clientURIs, blockchainIDs[0])
 
 		err := RunLoadTest(context.Background(), workers, terminalHeight, 2*time.Minute)
 		gomega.Ω(err).Should(gomega.BeNil())
