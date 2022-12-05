@@ -444,6 +444,6 @@ func (vm *VM) CrossChainAppRequestFailed(_ context.Context, _ ids.ID, _ uint32) 
 }
 
 func (vm *VM) CrossChainAppResponse(_ context.Context, _ ids.ID, _ uint32, response []byte) error {
-	vm.snowCtx.Log.Info("Cross chain app response: %v", zap.Stringer("response", fmt.Sprintf("%x", response)))
+	vm.snowCtx.Log.Info(fmt.Sprintf("Cross chain app response: %v", response))
 	return nil
 }
