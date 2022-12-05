@@ -22,7 +22,7 @@ func TestGenesis(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	// Initialize the vm
-	vm, _, _, err := newTestVM()
+	vm, _, _, err := newTestVM(t)
 	assert.NoError(err)
 	// Verify that the db is initialized
 	ok, err := vm.state.IsInitialized()
@@ -49,7 +49,7 @@ func TestHappyPath(t *testing.T) {
 	ctx := context.TODO()
 
 	// Initialize the vm
-	vm, snowCtx, msgChan, err := newTestVM()
+	vm, snowCtx, msgChan, err := newTestVM(t)
 	assert.NoError(err)
 
 	lastAcceptedID, err := vm.LastAccepted(ctx)
@@ -140,7 +140,7 @@ func TestService(t *testing.T) {
 	// Initialize the vm
 	assert := assert.New(t)
 	// Initialize the vm
-	vm, _, _, err := newTestVM()
+	vm, _, _, err := newTestVM(t)
 	assert.NoError(err)
 	service := Service{vm}
 	assert.NoError(service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
@@ -151,7 +151,7 @@ func TestSetState(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.TODO()
 	// Initialize the vm
-	vm, _, _, err := newTestVM()
+	vm, _, _, err := newTestVM(t)
 	assert.NoError(err)
 	// bootstrapping
 	assert.NoError(vm.SetState(ctx, snow.Bootstrapping))
@@ -164,7 +164,7 @@ func TestSetState(t *testing.T) {
 	assert.ErrorIs(vm.SetState(ctx, unknownState), snow.ErrUnknownState)
 }
 
-func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
+func newTestVM(t *testing.T) (*VM, *snow.Context, chan common.Message, error) {
 	dbManager := manager.NewMemDB(&version.Semantic{
 		Major: 1,
 		Minor: 0,
@@ -174,6 +174,7 @@ func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
 	vm := &VM{}
 	snowCtx := snow.DefaultContextTest()
 	snowCtx.ChainID = blockchainID
-	err := vm.Initialize(context.TODO(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	appSender := &common.SenderTest{T: t}
+	err := vm.Initialize(context.TODO(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, appSender)
 	return vm, snowCtx, msgChan, err
 }
