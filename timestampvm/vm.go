@@ -70,6 +70,8 @@ type VM struct {
 
 	// Indicates that this VM has finised bootstrapping for the chain
 	bootstrapped utils.AtomicBool
+
+	appSender common.AppSender
 }
 
 // Initialize this vm
@@ -89,7 +91,7 @@ func (vm *VM) Initialize(
 	configData []byte,
 	toEngine chan<- common.Message,
 	_ []*common.Fx,
-	_ common.AppSender,
+	appSender common.AppSender,
 ) error {
 	version, err := vm.Version(ctx)
 	if err != nil {
@@ -102,6 +104,7 @@ func (vm *VM) Initialize(
 	vm.snowCtx = snowCtx
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]*Block)
+	vm.appSender = appSender
 
 	// Create new state
 	vm.state = NewState(vm.dbManager.Current().Database, vm)
@@ -122,7 +125,17 @@ func (vm *VM) Initialize(
 	)
 
 	// Build off the most recently accepted block
-	return vm.SetPreference(ctx, lastAccepted)
+	if err := vm.SetPreference(ctx, lastAccepted); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := vm.appSender.SendCrossChainAppRequest(context.Background(), snowCtx.ChainID, 999, []byte{1}); err != nil {
+			panic(err)
+		}
+	}()
+
+	return nil
 }
 
 // Initializes Genesis if required
@@ -421,14 +434,16 @@ func (vm *VM) AppRequestFailed(_ context.Context, nodeID ids.NodeID, requestID u
 	return nil
 }
 
-func (vm *VM) CrossChainAppRequest(_ context.Context, _ ids.ID, _ uint32, deadline time.Time, request []byte) error {
-	return nil
+func (vm *VM) CrossChainAppRequest(ctx context.Context, chainID ids.ID, requestID uint32, deadline time.Time, request []byte) error {
+	return vm.appSender.SendCrossChainAppResponse(ctx, chainID, requestID, request)
 }
 
 func (vm *VM) CrossChainAppRequestFailed(_ context.Context, _ ids.ID, _ uint32) error {
+	vm.snowCtx.Log.Warn("Cross chain app request failed")
 	return nil
 }
 
 func (vm *VM) CrossChainAppResponse(_ context.Context, _ ids.ID, _ uint32, response []byte) error {
+	vm.snowCtx.Log.Info("Cross chain app response: %v", zap.Stringer("response", fmt.Sprintf("%x", response)))
 	return nil
 }
