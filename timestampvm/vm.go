@@ -37,7 +37,7 @@ var (
 	Version            = &version.Semantic{
 		Major: 1,
 		Minor: 3,
-		Patch: 0,
+		Patch: 1,
 	}
 
 	_ block.ChainVM = &VM{}
