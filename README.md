@@ -10,6 +10,8 @@ TimestampVM defines a blockchain that is a timestamp server. Each block in the b
 [`scripts/run.sh`](scripts/run.sh) automatically installs [avalanchego], sets up a local network,
 and creates a `timestampvm` genesis file. To build and run E2E tests, you need to set the variable `E2E` before it: `E2E=true ./scripts/run.sh 1.7.11`
 
+*Note: the ginkgo testing tool is required to be present for the above script to run successfully. See [the installation instructions](https://onsi.github.io/ginkgo/#getting-started) for installing ginkgo on your machine if it is not already installed.*  
+
 _See [`tests/e2e`](tests/e2e) to see how it's set up and how its client requests are made._
 
 ```bash
