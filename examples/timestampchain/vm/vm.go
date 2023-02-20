@@ -16,11 +16,18 @@ import (
 	"github.com/ava-labs/avalanchego/database/versiondb"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/snow/engine/common"
 	commonEng "github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/utils/timer/mockable"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/ava-labs/timestampvm/sdk/stack"
+)
+
+// Name/Version
+var (
+	Name    string = "TimestampChainVM"
+	Version string = "v0.0.1"
 )
 
 // Type assertions
@@ -52,6 +59,9 @@ type VM struct {
 	blockIndex    database.Database
 	acceptedIndex database.Database
 	state         database.Database
+
+	// Mempool
+	mempool *mempool
 }
 
 // Initialize implements the snowman.ChainVM interface
@@ -71,6 +81,8 @@ func (vm *VM) Initialize(
 	vm.blockIndex = prefixdb.New(blockPrefix, vm.vDB)
 	vm.acceptedIndex = prefixdb.New(acceptedPrefix, vm.vDB)
 	vm.state = prefixdb.New(statePrefix, vm.vDB)
+
+	vm.mempool = NewMempool()
 
 	return vm.initGenesis(ctx, genesisBytes)
 }
@@ -280,4 +292,12 @@ func (vm *VM) Shutdown(ctx context.Context) error {
 // Version returns the version of the VM.
 func (vm *VM) Version(ctx context.Context) (string, error) {
 	return Version, nil
+}
+
+func (vm *VM) CreateStaticHandlers(ctx context.Context) (map[string]*common.HTTPHandler, error) {
+	return nil, nil
+}
+
+func (vm *VM) CreateHandlers(ctx context.Context) (map[string]*common.HTTPHandler, error) {
+	return nil, nil
 }
