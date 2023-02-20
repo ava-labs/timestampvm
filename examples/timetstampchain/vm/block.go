@@ -34,5 +34,3 @@ func (b *Block) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
 
 // Bytes returns the byte repr. of this block
 func (b *Block) Bytes() []byte { return b.bytes }
-
-// TODO implement Verify, Accept, Reject
