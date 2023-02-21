@@ -36,7 +36,7 @@ type BlockCacheConfig struct {
 type BlockCache[B StatelessBlock] struct {
 	chainCtx *snow.Context
 
-	backend BlockBackend[B]
+	backend ChainBackend[B]
 
 	// verifiedBlocks is a map of blocks that have been verified and are currently in consensus
 	verifiedBlocks map[ids.ID]*Block[B]
@@ -58,7 +58,7 @@ type BlockCache[B StatelessBlock] struct {
 
 func NewBlockCache[B StatelessBlock](
 	chainCtx *snow.Context,
-	backend BlockBackend[B],
+	backend ChainBackend[B],
 	lastAcceptedStatelessBlock B,
 	config BlockCacheConfig,
 	registerer prometheus.Registerer,

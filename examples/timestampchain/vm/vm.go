@@ -34,7 +34,7 @@ var (
 
 // Type assertions
 var (
-	_ stack.BlockBackend[*Block] = (*VM)(nil)
+	_ stack.ChainBackend[*Block] = (*VM)(nil)
 	_ stack.VMBackend[*Block]    = (*VM)(nil)
 )
 
@@ -199,7 +199,10 @@ func (vm *VM) GetBlockIDAtHeight(ctx context.Context, height uint64) (ids.ID, er
 	binary.BigEndian.PutUint64(heightBytes, height)
 
 	blkIDBytes, err := vm.heightIndex.Get(heightBytes)
-	if err != nil {
+	switch {
+	case err == database.ErrNotFound:
+		return ids.ID{}, err
+	case err != nil:
 		return ids.ID{}, fmt.Errorf("failed to get height index at %d: %w", height, err)
 	}
 

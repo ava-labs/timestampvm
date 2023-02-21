@@ -20,7 +20,7 @@ var _ snowman.Block = (*Block[StatelessBlock])(nil)
 type Block[B StatelessBlock] struct {
 	innerBlock B
 	cache      *BlockCache[B]
-	backend    BlockBackend[B]
+	backend    ChainBackend[B]
 
 	// decider is populated when Verify is called on the block.
 	// When the block is marked as Accepted/Rejected by the consensus engine,

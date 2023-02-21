@@ -23,11 +23,9 @@ Stacks SDK takes the approach of building VMs through composable and interchange
 1. Finish TimestampVM ChainStack example v1 with mempool
 2. Abstract Accept/Reject from calling on the VM to verify returns a `Decidable`
 3. Re-write example
-4. Write unit tests
+4. Write basic unit tests and e2e tests
 
-e2e tests and load test
-
-5. Implement desired interface for BlockStack with chain indexing abstracted away
+5. Implement desired interface for BlockStack with chain indexing abstracted and generic state management abstracted away
 6. Implement BlockStack
-7. Write unit tests, e2e tests, and load test
-8. TxStack 
+7. Write basic unit tests and e2e tests
+8. TxStack

@@ -40,18 +40,23 @@ type VMBackend[Block StatelessBlock] interface {
 	// Version returns the version of the VM.
 	Version(context.Context) (string, error)
 
-	BlockBackend[Block]
+	ChainBackend[Block]
 
 	CreateStaticHandlers(context.Context) (map[string]*common.HTTPHandler, error)
 	CreateHandlers(context.Context) (map[string]*common.HTTPHandler, error)
 }
 
-type BlockBackend[Block StatelessBlock] interface {
+type ChainBackend[Block StatelessBlock] interface {
+	// VM functionality required to provide chain indexing of accepted blocks
 	LastAccepted(context.Context) (ids.ID, error)
+	GetBlockIDAtHeight(context.Context, uint64) (ids.ID, error)
+	GetBlock(context.Context, ids.ID) (Block, error)
+	BlockBackend[Block]
+}
+
+type BlockBackend[Block StatelessBlock] interface {
 	ParseBlock(context.Context, []byte) (Block, error)
 	BuildBlock(context.Context, Block) (Block, error)
-	GetBlockIDAtHeight(context.Context, uint64) (ids.ID, error) // TODO Handle missing blocks with database.ErrNotFound
-	GetBlock(context.Context, ids.ID) (Block, error)
 	BlockDecisioner[Block]
 }
 
