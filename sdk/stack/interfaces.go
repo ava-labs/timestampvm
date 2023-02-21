@@ -14,7 +14,16 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 )
 
-type VMBackend[Block StatelessBlock] interface {
+type ChainVM[Block StatelessBlock] interface {
+	VMBackend
+	ChainBackend[Block]
+}
+
+type BlockVM[Block StatelessBlock] interface {
+	VMBackend
+}
+
+type VMBackend interface {
 	Initialize(
 		ctx context.Context,
 		chainCtx *snow.Context,
@@ -40,23 +49,21 @@ type VMBackend[Block StatelessBlock] interface {
 	// Version returns the version of the VM.
 	Version(context.Context) (string, error)
 
-	ChainBackend[Block]
-
 	CreateStaticHandlers(context.Context) (map[string]*common.HTTPHandler, error)
 	CreateHandlers(context.Context) (map[string]*common.HTTPHandler, error)
 }
 
 type ChainBackend[Block StatelessBlock] interface {
 	// VM functionality required to provide chain indexing of accepted blocks
-	LastAccepted(context.Context) (ids.ID, error)
-	GetBlockIDAtHeight(context.Context, uint64) (ids.ID, error)
-	GetBlock(context.Context, ids.ID) (Block, error)
+	LastAccepted(ctx context.Context) (ids.ID, error)
+	GetBlockIDAtHeight(ctx context.Context, height uint64) (ids.ID, error)
+	GetBlock(ctx context.Context, blockID ids.ID) (Block, error)
 	BlockBackend[Block]
 }
 
 type BlockBackend[Block StatelessBlock] interface {
-	ParseBlock(context.Context, []byte) (Block, error)
-	BuildBlock(context.Context, Block) (Block, error)
+	ParseBlock(ctx context.Context, bytes []byte) (Block, error)
+	BuildBlock(ctx context.Context, parent Block) (Block, error)
 	BlockDecisioner[Block]
 }
 

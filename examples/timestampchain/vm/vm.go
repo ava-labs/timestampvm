@@ -35,7 +35,7 @@ var (
 // Type assertions
 var (
 	_ stack.ChainBackend[*Block] = (*VM)(nil)
-	_ stack.VMBackend[*Block]    = (*VM)(nil)
+	_ stack.ChainVM[*Block]      = (*VM)(nil)
 )
 
 var (

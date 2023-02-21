@@ -20,7 +20,7 @@ var _ block.ChainVM = (*VM[StatelessBlock])(nil)
 type VM[Block StatelessBlock] struct {
 	chainCtx *snow.Context
 
-	ChainVM VMBackend[Block]
+	ChainVM ChainVM[Block]
 
 	*BlockCache[Block]
 	*network.Network
