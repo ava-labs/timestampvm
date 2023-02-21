@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/validators"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/version"
 )
 
@@ -18,14 +19,8 @@ var (
 	_ validators.Connector     = (*Network)(nil)
 )
 
-// type NetworkProtocol interface {
-// 	common.NetworkAppHandler
-// 	common.NetworkAppSender
-// }
-
 type Network struct {
-	common.NetworkAppHandler
-	validators.Connector
+	common.AppHandler
 
 	peerTracker *peerTracker
 
@@ -33,13 +28,11 @@ type Network struct {
 	connectors     []validators.Connector
 }
 
-func NewNetwork(
-	connectors []validators.Connector,
-	networkHandlers map[string]common.NetworkAppHandler,
-) *Network {
+func NewNetwork(connectors []validators.Connector) *Network {
 	peerTracker := newPeerTracker()
 	connectors = append(connectors, peerTracker)
 	network := &Network{
+		AppHandler:  common.NewNoOpAppHandler(logging.NoLog{}), // TODO: replace no-op handler with protocol registry
 		peerTracker: peerTracker,
 		connectors:  connectors,
 	}
@@ -69,12 +62,3 @@ func (n *Network) Disconnected(ctx context.Context, nodeID ids.NodeID) error {
 	}
 	return nil
 }
-
-// Route all messages based off of their prefix
-
-// Route all cross-chain messages based off of their prefix
-
-// TODO:
-// implement general protocol registry
-// implement general mempool protocol for gossiping data hashes
-// integrate into timestampvm chain

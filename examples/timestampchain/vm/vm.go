@@ -29,6 +29,7 @@ import (
 var (
 	Name    string = "TimestampChainVM"
 	Version string = "v0.0.1"
+	ID             = ids.ID{'t', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p'}
 )
 
 // Type assertions

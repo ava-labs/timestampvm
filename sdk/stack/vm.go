@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
+	"github.com/ava-labs/timestampvm/sdk/network"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +23,7 @@ type VM[Block StatelessBlock] struct {
 	ChainVM VMBackend[Block]
 
 	*BlockCache[Block]
-	*Network
+	*network.Network
 }
 
 func (vm *VM[B]) Initialize(
@@ -37,6 +38,7 @@ func (vm *VM[B]) Initialize(
 	appSender common.AppSender,
 ) error {
 	vm.chainCtx = chainCtx
+	vm.Network = network.NewNetwork(nil)
 	if err := vm.ChainVM.Initialize(
 		ctx,
 		chainCtx,

@@ -21,8 +21,8 @@ type Client interface {
 	GetBlock(ctx context.Context, blockID ids.ID) (*Block, error)
 }
 
-// New creates a new client object.
-func New(uri string) Client {
+// NewClient creates a new client object.
+func NewClient(uri string) Client {
 	req := rpc.NewEndpointRequester(uri)
 	return &client{req: req}
 }
