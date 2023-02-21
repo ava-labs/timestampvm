@@ -5,13 +5,13 @@ set -o nounset
 set -o pipefail
 
 # Root directory
-ROOT_DIRECTORY_PATH=$(
+ROOT_DIR=$(
     cd "$(dirname "${BASH_SOURCE[0]}")"
     cd .. && pwd
 )
 
 # Load the constants
-source "$ROOT_DIRECTORY_PATH"/scripts/constants.sh
+source "$ROOT_DIR"/scripts/constants.sh
 
 if [[ $# -ne 3 ]]; then
     echo "Invalid arguments to scripts/build_vm.sh, expected three arguments: [NAME] [PLUGIN_DIR] [BINARY_NAME]"

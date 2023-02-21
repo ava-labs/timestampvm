@@ -28,7 +28,7 @@ func newTestVM(genesisDataHash ids.ID) (*VM, *Service, chan common.Message, erro
 	vm := &VM{}
 	snowCtx := snow.DefaultContextTest()
 	snowCtx.ChainID = blockchainID
-	err := vm.Initialize(context.TODO(), snowCtx, dbManager, genesisDataHash[:], nil, nil, msgChan, nil, nil)
+	err := vm.Initialize(context.Background(), snowCtx, dbManager, genesisDataHash[:], nil, nil, msgChan, nil, nil)
 	return vm, &Service{vm: vm}, msgChan, err
 }
 
