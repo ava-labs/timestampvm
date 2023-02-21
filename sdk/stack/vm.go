@@ -17,6 +17,8 @@ import (
 var _ block.ChainVM = (*VM[StatelessBlock])(nil)
 
 type VM[Block StatelessBlock] struct {
+	chainCtx *snow.Context
+
 	ChainVM VMBackend[Block]
 
 	*BlockCache[Block]
@@ -34,6 +36,7 @@ func (vm *VM[B]) Initialize(
 	fxs []*common.Fx,
 	appSender common.AppSender,
 ) error {
+	vm.chainCtx = chainCtx
 	if err := vm.ChainVM.Initialize(
 		ctx,
 		chainCtx,
@@ -59,7 +62,7 @@ func (vm *VM[B]) Initialize(
 	}
 
 	blockCacheRegistry := prometheus.NewRegistry()
-	vm.BlockCache, err = NewBlockCache[B](vm.ChainVM, lastAcceptedBlock, DefaultBlockCacheConfig, blockCacheRegistry)
+	vm.BlockCache, err = NewBlockCache[B](chainCtx, vm.ChainVM, lastAcceptedBlock, DefaultBlockCacheConfig, blockCacheRegistry)
 	if err != nil {
 		return err
 	}
@@ -81,6 +84,7 @@ func (vm *VM[B]) SetState(ctx context.Context, state snow.State) error {
 
 // Shutdown is called when the node is shutting down.
 func (vm *VM[B]) Shutdown(ctx context.Context) error {
+	vm.BlockCache.Shutdown(ctx)
 	return vm.ChainVM.Shutdown(ctx)
 }
 

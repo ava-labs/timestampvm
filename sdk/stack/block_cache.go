@@ -11,9 +11,11 @@ import (
 	"github.com/ava-labs/avalanchego/cache/metercacher"
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/choices"
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
 var DefaultBlockCacheConfig = BlockCacheConfig{
@@ -32,6 +34,8 @@ type BlockCacheConfig struct {
 
 // BlockCache serves as a cache for blocks to serve to the Snowman Consensus Engine
 type BlockCache[B StatelessBlock] struct {
+	chainCtx *snow.Context
+
 	backend BlockBackend[B]
 
 	// verifiedBlocks is a map of blocks that have been verified and are currently in consensus
@@ -52,7 +56,13 @@ type BlockCache[B StatelessBlock] struct {
 	preferredBlock    *Block[B]
 }
 
-func NewBlockCache[B StatelessBlock](backend BlockBackend[B], lastAcceptedStatelessBlock B, config BlockCacheConfig, registerer prometheus.Registerer) (*BlockCache[B], error) {
+func NewBlockCache[B StatelessBlock](
+	chainCtx *snow.Context,
+	backend BlockBackend[B],
+	lastAcceptedStatelessBlock B,
+	config BlockCacheConfig,
+	registerer prometheus.Registerer,
+) (*BlockCache[B], error) {
 	decidedCache, err := metercacher.New(
 		"decided_cache",
 		registerer,
@@ -87,6 +97,7 @@ func NewBlockCache[B StatelessBlock](backend BlockBackend[B], lastAcceptedStatel
 	}
 
 	blockCache := &BlockCache[B]{
+		chainCtx:         chainCtx,
 		backend:          backend,
 		verifiedBlocks:   make(map[ids.ID]*Block[B]),
 		decidedBlocks:    decidedCache,
@@ -289,5 +300,15 @@ func (bc *BlockCache[B]) getStatus(ctx context.Context, blk B) (choices.Status, 
 		return choices.Processing, nil
 	default:
 		return choices.Unknown, fmt.Errorf("failed to get accepted blkID at height: %d: %w", blkHeight, err)
+	}
+}
+
+// Shutdown marks all verified blocks as abandoned
+func (bc *BlockCache[B]) Shutdown(ctx context.Context) {
+	for _, verifiedBlock := range bc.verifiedBlocks {
+		err := verifiedBlock.decider.Abandon(ctx)
+		if err != nil {
+			bc.chainCtx.Log.Warn("Failed to abandon block during shutdown", zap.Error(err))
+		}
 	}
 }

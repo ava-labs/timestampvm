@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# (c) 2019-2022, Ava Labs, Inc. All rights reserved.
-# See the file LICENSE for licensing terms.
 
-set -o errexit
-set -o nounset
-set -o pipefail
+# Versions
+AVALANCHE_VERSION=${AVALANCHE_VERSION:-'v1.9.7'}
 
 # Set the CGO flags to use the portable version of BLST
 #
@@ -12,4 +9,5 @@ set -o pipefail
 # to pass this flag to all child processes spawned by the shell.
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
-go test -race -timeout="3m" -coverprofile="coverage.out" -covermode="atomic" $(go list ./... | grep -v tests)
+# Test parameters
+UNIT_TEST_TIMEOUT=${UNIT_TEST_TIMEOUT:-"3m"}

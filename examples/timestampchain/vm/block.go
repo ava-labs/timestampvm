@@ -4,9 +4,17 @@
 package vm
 
 import (
+	"context"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/timestampvm/sdk/stack"
+)
+
+// Type assertions
+var (
+	_ stack.StatelessBlock = (*Block)(nil)
+	_ stack.Decider        = (*blockDecider)(nil)
 )
 
 // Block defines a stateless block
@@ -34,3 +42,19 @@ func (b *Block) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
 
 // Bytes returns the byte repr. of this block
 func (b *Block) Bytes() []byte { return b.bytes }
+
+// blockDecider implements the stack.Decider interface
+type blockDecider struct {
+	*Block
+
+	vm *VM
+}
+
+func (d *blockDecider) Accept(ctx context.Context) error {
+	return d.vm.acceptBlock(d.Block)
+}
+
+// Abandon is a no-op since there is nothing to clean up on Abandon
+func (d *blockDecider) Abandon(ctx context.Context) error {
+	return nil
+}

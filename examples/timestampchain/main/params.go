@@ -6,7 +6,7 @@ package main
 import (
 	"flag"
 
-	"github.com/ava-labs/timestampvm/timestampvm"
+	timestampvm "github.com/ava-labs/timestampvm/examples/timestampchain/vm"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )

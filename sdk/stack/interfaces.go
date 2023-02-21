@@ -56,9 +56,12 @@ type BlockBackend[Block StatelessBlock] interface {
 }
 
 type BlockDecisioner[Block StatelessBlock] interface {
-	Verify(ctx context.Context, parent Block, block Block) error
-	Accept(context.Context, Block) error
-	Reject(context.Context, Block) error
+	Verify(ctx context.Context, parent Block, block Block) (Decider, error)
+}
+
+type Decider interface {
+	Accept(context.Context) error
+	Abandon(context.Context) error
 }
 
 type StatelessBlock interface {

@@ -22,6 +22,13 @@ type Block[B StatelessBlock] struct {
 	cache      *BlockCache[B]
 	backend    BlockBackend[B]
 
+	// decider is populated when Verify is called on the block.
+	// When the block is marked as Accepted/Rejected by the consensus engine,
+	// Accept/Abandon will be called on the block.
+	// If the VM shuts down, Abandon will be called on all verified blocks, but this
+	// is not guaranteed in the event of an ungraceful shutdown.
+	decider Decider
+
 	status choices.Status
 }
 
@@ -57,8 +64,12 @@ func (b *Block[B]) Verify(ctx context.Context) error {
 	}
 
 	// Verify the block with the backend
-	if err := b.backend.Verify(ctx, parentBlock.(*Block[B]).innerBlock, b.innerBlock); err != nil {
+	b.decider, err = b.backend.Verify(ctx, parentBlock.(*Block[B]).innerBlock, b.innerBlock)
+	if err != nil {
 		return err
+	}
+	if b.decider == nil {
+		return fmt.Errorf("block %s returned invalid nil decider during verification", b.ID())
 	}
 
 	// Update caches if verification passes
@@ -70,8 +81,8 @@ func (b *Block[B]) Verify(ctx context.Context) error {
 }
 
 func (b *Block[B]) Accept(ctx context.Context) error {
-	if err := b.backend.Accept(ctx, b.innerBlock); err != nil {
-		return err
+	if err := b.decider.Accept(ctx); err != nil {
+		return nil
 	}
 
 	b.status = choices.Accepted
@@ -84,7 +95,7 @@ func (b *Block[B]) Accept(ctx context.Context) error {
 }
 
 func (b *Block[B]) Reject(ctx context.Context) error {
-	if err := b.backend.Reject(ctx, b.innerBlock); err != nil {
+	if err := b.decider.Abandon(ctx); err != nil {
 		return err
 	}
 

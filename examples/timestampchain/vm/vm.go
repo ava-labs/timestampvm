@@ -17,11 +17,12 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
-	commonEng "github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/utils/hashing"
+	avalancheJSON "github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/utils/timer/mockable"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/ava-labs/timestampvm/sdk/stack"
+	avalancheRPC "github.com/gorilla/rpc/v2"
 )
 
 // Name/Version
@@ -72,9 +73,9 @@ func (vm *VM) Initialize(
 	genesisBytes []byte,
 	_ []byte,
 	_ []byte,
-	toEngine chan<- commonEng.Message,
-	_ []*commonEng.Fx,
-	appSender commonEng.AppSender,
+	toEngine chan<- common.Message,
+	_ []*common.Fx,
+	appSender common.AppSender,
 ) error {
 	vm.vDB = versiondb.New(dbManager.Current().Database)
 	vm.heightIndex = prefixdb.New(heightPrefix, vm.vDB)
@@ -82,38 +83,39 @@ func (vm *VM) Initialize(
 	vm.acceptedIndex = prefixdb.New(acceptedPrefix, vm.vDB)
 	vm.state = prefixdb.New(statePrefix, vm.vDB)
 
-	vm.mempool = NewMempool()
+	vm.mempool = NewMempool(toEngine)
 
 	return vm.initGenesis(ctx, genesisBytes)
 }
 
 func (vm *VM) initGenesis(ctx context.Context, genesisBytes []byte) error {
-	genesisBlock, err := vm.ParseBlock(ctx, genesisBytes)
+	genesisDataHash, err := ids.ToID(genesisBytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse genesis block bytes: %w", err)
+		return fmt.Errorf("failed to convert supplied genesis bytes to data hash: %w", err)
 	}
 
-	if genesisBlock.Hght != 0 {
-		return fmt.Errorf("cannot use genesis block with height: %d", genesisBlock.Hght)
+	genesisBlock := &Block{
+		PrntID:   ids.Empty,
+		Hght:     0,
+		Tmstmp:   0,
+		DataHash: genesisDataHash,
 	}
-	if genesisBlock.PrntID != ids.Empty {
-		return fmt.Errorf("cannot use genesis block with non-empty parentID: %s", genesisBlock.PrntID)
+
+	bytes, err := Codec.Marshal(0, genesisBlock)
+	if err != nil {
+		return fmt.Errorf("failed to marshal genesis block: %w", err)
 	}
+	genesisBlock.bytes = bytes
+	genesisBlock.id = hashing.ComputeHash256Array(bytes)
 
 	genesisBlkID, err := vm.GetBlockIDAtHeight(ctx, 0)
-	// If the block on disk matches what we parsed, return early
-	if err == nil && genesisBlkID == genesisBlock.id {
-		return nil
-	}
-
 	switch {
-	case err == nil && genesisBlkID == genesisBlock.id:
+	case err == nil && genesisBlkID == genesisBlock.id: // If the block on disk matches what we parsed, return early
 		return nil
 	case errors.Is(err, database.ErrNotFound):
-		if err := vm.putBlock(genesisBlock); err != nil {
+		if err := vm.acceptBlock(genesisBlock); err != nil {
 			return fmt.Errorf("failed to put genesis block: %w", err)
 		}
-
 		return nil
 	default:
 		return fmt.Errorf("failed to get blockID for genesis: %w", err)
@@ -138,11 +140,15 @@ func (vm *VM) ParseBlock(ctx context.Context, b []byte) (*Block, error) {
 
 // BuildBlock builds a block out of the necessary components
 func (vm *VM) BuildBlock(ctx context.Context, parentBlock *Block) (*Block, error) {
+	dataHash, err := vm.mempool.Next()
+	if err != nil {
+		return nil, err
+	}
 	block := &Block{
 		PrntID:   parentBlock.id,
 		Hght:     parentBlock.Hght + 1,
 		Tmstmp:   vm.clock.Time().Unix(),
-		DataHash: ids.GenerateTestID(),
+		DataHash: dataHash,
 	}
 
 	bytes, err := Codec.Marshal(0, block)
@@ -155,7 +161,9 @@ func (vm *VM) BuildBlock(ctx context.Context, parentBlock *Block) (*Block, error
 	return block, nil
 }
 
-func (vm *VM) putBlock(block *Block) error {
+func (vm *VM) acceptBlock(block *Block) error {
+	defer vm.vDB.Abort()
+
 	heightBytes := make([]byte, wrappers.LongLen)
 	binary.BigEndian.PutUint64(heightBytes, block.Height())
 
@@ -165,6 +173,21 @@ func (vm *VM) putBlock(block *Block) error {
 
 	if err := vm.blockIndex.Put(block.id[:], block.bytes); err != nil {
 		return fmt.Errorf("failed to put block %s into block index: %w", block.ID(), err)
+	}
+
+	// Add timestamp to the current state
+	timestampBytes := make([]byte, wrappers.LongLen)
+	binary.BigEndian.PutUint64(timestampBytes, uint64(block.Tmstmp))
+	if err := vm.state.Put(timestampBytes, block.DataHash[:]); err != nil {
+		return fmt.Errorf("failed to put timestamped hash in database for block %s: %w", block.id, err)
+	}
+
+	if err := vm.acceptedIndex.Put(acceptedKey, block.id[:]); err != nil {
+		return fmt.Errorf("failed to update last accepted block to %s: %w", block.id, err)
+	}
+
+	if err := vm.vDB.Commit(); err != nil {
+		return fmt.Errorf("failed to commit database accepting block %s: %w", block.id, err)
 	}
 
 	return nil
@@ -204,10 +227,10 @@ func (vm *VM) GetBlock(ctx context.Context, blkID ids.ID) (*Block, error) {
 // Verify verifies that [block] to be added to consensus with the given parent block.
 // This function assumes that [parentBlock] is guaranteed to be the actual parent of
 // [block].
-func (vm *VM) Verify(ctx context.Context, parent *Block, block *Block) error {
+func (vm *VM) Verify(ctx context.Context, parent *Block, block *Block) (stack.Decider, error) {
 	// Ensure [b]'s height comes right after its parent's height
 	if expectedHeight := parent.Height() + 1; expectedHeight != block.Hght {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"expected block to have height %d, but found %d",
 			expectedHeight,
 			block.Hght,
@@ -216,49 +239,19 @@ func (vm *VM) Verify(ctx context.Context, parent *Block, block *Block) error {
 
 	// Ensure [b]'s timestamp is >= its parent's timestamp.
 	if block.Timestamp().Unix() < parent.Timestamp().Unix() {
-		return fmt.Errorf("block cannot have timestamp (%s) < parent timestamp (%s)", block.Timestamp(), parent.Timestamp())
+		return nil, fmt.Errorf("block cannot have timestamp (%s) < parent timestamp (%s)", block.Timestamp(), parent.Timestamp())
 	}
 
 	// Ensure [b]'s timestamp is not more than an hour
 	// ahead of this node's time
 	if block.Timestamp().Unix() >= time.Now().Add(futureBlockLimit).Unix() {
-		return fmt.Errorf("block cannot have timestamp (%s) further than (%s) past current time (%s)", block.Timestamp(), futureBlockLimit, time.Now())
+		return nil, fmt.Errorf("block cannot have timestamp (%s) further than (%s) past current time (%s)", block.Timestamp(), futureBlockLimit, time.Now())
 	}
 
-	return nil
-}
-
-// Accept marks [block] as accepted and performs all DB IO necessary on accept.
-func (vm *VM) Accept(ctx context.Context, block *Block) error {
-	defer vm.vDB.Abort()
-
-	if err := vm.putBlock(block); err != nil {
-		return err
-	}
-
-	// Add timestamp to the current state
-	timestampBytes := make([]byte, wrappers.LongLen)
-	binary.BigEndian.PutUint64(timestampBytes, uint64(block.Tmstmp))
-	if err := vm.state.Put(timestampBytes, block.DataHash[:]); err != nil {
-		return fmt.Errorf("failed to put timestamped hash in database for block %s: %w", block.id, err)
-	}
-
-	if err := vm.acceptedIndex.Put(acceptedKey, block.id[:]); err != nil {
-		return fmt.Errorf("failed to update last accepted block to %s: %w", block.id, err)
-	}
-
-	if err := vm.vDB.Commit(); err != nil {
-		return fmt.Errorf("failed to commit database accepting block %s: %w", block.id, err)
-	}
-
-	return nil
-}
-
-// Reject is called by the engine when a block is marked as rejected.
-// TimestampVM does not need to perform any cleanup on Reject, since there is no garbage collection
-// necessary from Verify.
-func (vm *VM) Reject(ctx context.Context, block *Block) error {
-	return nil
+	return &blockDecider{
+		Block: block,
+		vm:    vm,
+	}, nil
 }
 
 func (vm *VM) LastAccepted(ctx context.Context) (ids.ID, error) {
@@ -299,5 +292,15 @@ func (vm *VM) CreateStaticHandlers(ctx context.Context) (map[string]*common.HTTP
 }
 
 func (vm *VM) CreateHandlers(ctx context.Context) (map[string]*common.HTTPHandler, error) {
-	return nil, nil
+	server := avalancheRPC.NewServer()
+	server.RegisterCodec(avalancheJSON.NewCodec(), "application/json")
+	server.RegisterCodec(avalancheJSON.NewCodec(), "application/json;charset=UTF-8")
+	if err := server.RegisterService(&Service{vm: vm}, "timestamp"); err != nil {
+		return nil, err
+	}
+
+	handlers := map[string]*common.HTTPHandler{
+		"/timestamp": {LockOptions: common.NoLock, Handler: server},
+	}
+	return handlers, nil
 }

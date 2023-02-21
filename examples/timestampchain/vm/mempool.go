@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/snow/engine/common"
 )
 
 var (
@@ -16,16 +17,23 @@ var (
 )
 
 type mempool struct {
+	toEngine   chan<- common.Message
 	dataHashes chan ids.ID
 }
 
-func NewMempool() *mempool {
+func NewMempool(toEngine chan<- common.Message) *mempool {
 	return &mempool{
 		dataHashes: make(chan ids.ID, mempoolSize),
+		toEngine:   toEngine,
 	}
 }
 
 func (m *mempool) Add(dataHash ids.ID) error {
+	select {
+	case m.toEngine <- common.PendingTxs:
+	default:
+	}
+
 	select {
 	case m.dataHashes <- dataHash:
 		return nil
@@ -41,4 +49,8 @@ func (m *mempool) Next() (ids.ID, error) {
 	default:
 		return ids.Empty, errEmptyMempool
 	}
+}
+
+func (m *mempool) Len() int {
+	return len(m.dataHashes)
 }
