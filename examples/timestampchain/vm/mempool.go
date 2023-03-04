@@ -29,7 +29,7 @@ type mempool struct {
 // 	Add(Item) error
 // }
 
-func NewMempool(toEngine chan<- common.Message) *mempool {
+func newMempool(toEngine chan<- common.Message) *mempool {
 	return &mempool{
 		dataHashes: make(chan ids.ID, mempoolSize),
 		toEngine:   toEngine,

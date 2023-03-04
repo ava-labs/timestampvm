@@ -16,7 +16,7 @@ type builder struct {
 	mempool *mempool
 }
 
-func NewBuilder(clock *mockable.Clock, mempool *mempool) *builder {
+func newBuilder(clock *mockable.Clock, mempool *mempool) *builder {
 	return &builder{
 		clock:   clock,
 		mempool: mempool,

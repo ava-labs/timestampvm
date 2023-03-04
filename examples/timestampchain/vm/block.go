@@ -79,19 +79,3 @@ func (d *chainDecider) Accept(ctx context.Context) error {
 func (d *chainDecider) Abandon(ctx context.Context) error {
 	return nil
 }
-
-// blockDecider implements the stack.Decider interface
-type blockDecider struct {
-	*Block
-
-	acceptor Acceptor
-}
-
-func (d *blockDecider) Accept(ctx context.Context) error {
-	return d.acceptor.Accept(d.Block)
-}
-
-// Abandon is a no-op since there is nothing to clean up on Abandon
-func (d *blockDecider) Abandon(ctx context.Context) error {
-	return nil
-}

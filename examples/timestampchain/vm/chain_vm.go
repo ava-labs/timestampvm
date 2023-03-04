@@ -27,9 +27,9 @@ import (
 
 // Name/Version
 var (
-	Name    string = "TimestampChainVM"
-	Version string = "v0.0.1"
-	ID             = ids.ID{'t', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p'}
+	Name    = "TimestampChainVM"
+	Version = "v0.0.1"
+	ID      = ids.ID{'t', 'i', 'm', 'e', 's', 't', 'a', 'm', 'p'}
 )
 
 // Type assertions
@@ -84,8 +84,8 @@ func (vm *VM) Initialize(
 	vm.acceptedIndex = prefixdb.New(acceptedPrefix, vm.vDB)
 	vm.state = prefixdb.New(statePrefix, vm.vDB)
 
-	vm.mempool = NewMempool(toEngine)
-	vm.builder = NewBuilder(&vm.clock, vm.mempool)
+	vm.mempool = newMempool(toEngine)
+	vm.builder = newBuilder(&vm.clock, vm.mempool)
 
 	return vm.initGenesis(ctx, genesisBytes)
 }
