@@ -62,8 +62,8 @@ type VM struct {
 	acceptedIndex database.Database
 	state         database.Database
 
-	// Mempool
 	mempool *mempool
+	*builder
 }
 
 // Initialize implements the snowman.ChainVM interface
@@ -85,6 +85,7 @@ func (vm *VM) Initialize(
 	vm.state = prefixdb.New(statePrefix, vm.vDB)
 
 	vm.mempool = NewMempool(toEngine)
+	vm.builder = NewBuilder(&vm.clock, vm.mempool)
 
 	return vm.initGenesis(ctx, genesisBytes)
 }
@@ -114,7 +115,7 @@ func (vm *VM) initGenesis(ctx context.Context, genesisBytes []byte) error {
 	case err == nil && genesisBlkID == genesisBlock.id: // If the block on disk matches what we parsed, return early
 		return nil
 	case errors.Is(err, database.ErrNotFound):
-		if err := vm.acceptBlock(genesisBlock); err != nil {
+		if err := vm.Accept(genesisBlock); err != nil {
 			return fmt.Errorf("failed to put genesis block: %w", err)
 		}
 		return nil
@@ -124,45 +125,10 @@ func (vm *VM) initGenesis(ctx context.Context, genesisBytes []byte) error {
 }
 
 func (vm *VM) ParseBlock(ctx context.Context, b []byte) (*Block, error) {
-	// A new empty block
-	block := &Block{}
-
-	// Unmarshal the byte repr. of the block into our empty block
-	_, err := Codec.Unmarshal(b, block)
-	if err != nil {
-		return nil, err
-	}
-
-	block.id = hashing.ComputeHash256Array(b)
-	block.bytes = b
-
-	return block, nil
+	return ParseBlock(ctx, b)
 }
 
-// BuildBlock builds a block out of the necessary components
-func (vm *VM) BuildBlock(ctx context.Context, parentBlock *Block) (*Block, error) {
-	dataHash, err := vm.mempool.Next()
-	if err != nil {
-		return nil, err
-	}
-	block := &Block{
-		PrntID:   parentBlock.id,
-		Hght:     parentBlock.Hght + 1,
-		Tmstmp:   vm.clock.Time().Unix(),
-		DataHash: dataHash,
-	}
-
-	bytes, err := Codec.Marshal(0, block)
-	if err != nil {
-		return nil, err
-	}
-	block.bytes = bytes
-	block.id = hashing.ComputeHash256Array(bytes)
-
-	return block, nil
-}
-
-func (vm *VM) acceptBlock(block *Block) error {
+func (vm *VM) Accept(block *Block) error {
 	defer vm.vDB.Abort()
 
 	heightBytes := make([]byte, wrappers.LongLen)
@@ -252,9 +218,9 @@ func (vm *VM) Verify(ctx context.Context, parent *Block, block *Block) (stack.De
 		return nil, fmt.Errorf("block cannot have timestamp (%s) further than (%s) past current time (%s)", block.Timestamp(), futureBlockLimit, time.Now())
 	}
 
-	return &blockDecider{
-		Block: block,
-		vm:    vm,
+	return &chainDecider{
+		Block:    block,
+		acceptor: vm,
 	}, nil
 }
 

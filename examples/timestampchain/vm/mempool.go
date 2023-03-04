@@ -16,10 +16,18 @@ var (
 	mempoolSize     = 100
 )
 
+// var _ Mempool[ids.ID, ids.ID] = (*mempool)(nil)
+
 type mempool struct {
 	toEngine   chan<- common.Message
 	dataHashes chan ids.ID
 }
+
+// TODO
+// type Mempool[Pending any, Item any] interface {
+// 	Pending() (Pending, error)
+// 	Add(Item) error
+// }
 
 func NewMempool(toEngine chan<- common.Message) *mempool {
 	return &mempool{
@@ -29,10 +37,7 @@ func NewMempool(toEngine chan<- common.Message) *mempool {
 }
 
 func (m *mempool) Add(dataHash ids.ID) error {
-	select {
-	case m.toEngine <- common.PendingTxs:
-	default:
-	}
+	m.notifyEngine()
 
 	select {
 	case m.dataHashes <- dataHash:
@@ -42,12 +47,25 @@ func (m *mempool) Add(dataHash ids.ID) error {
 	}
 }
 
-func (m *mempool) Next() (ids.ID, error) {
+func (m *mempool) Pending() (ids.ID, error) {
 	select {
 	case nextDataHash := <-m.dataHashes:
 		return nextDataHash, nil
 	default:
 		return ids.Empty, errEmptyMempool
+	}
+}
+
+func (m *mempool) NotifyBuildBlock() {
+	if m.Len() > 0 {
+		m.notifyEngine()
+	}
+}
+
+func (m *mempool) notifyEngine() {
+	select {
+	case m.toEngine <- common.PendingTxs:
+	default:
 	}
 }
 
