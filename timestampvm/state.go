@@ -1,4 +1,4 @@
-// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -7,7 +7,6 @@ import (
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/database/prefixdb"
 	"github.com/ava-labs/avalanchego/database/versiondb"
-	"github.com/ava-labs/avalanchego/vms/components/avax"
 )
 
 var (
@@ -22,9 +21,7 @@ var (
 // State is a wrapper around avax.SingleTonState and BlockState
 // State also exposes a few methods needed for managing database commits and close.
 type State interface {
-	// SingletonState is defined in avalanchego,
-	// it is used to understand if db is initialized already.
-	avax.SingletonState
+	InitializedState
 	BlockState
 
 	Commit() error
@@ -32,7 +29,7 @@ type State interface {
 }
 
 type state struct {
-	avax.SingletonState
+	InitializedState
 	BlockState
 
 	baseDB *versiondb.Database
@@ -42,16 +39,16 @@ func NewState(db database.Database, vm *VM) State {
 	// create a new baseDB
 	baseDB := versiondb.New(db)
 
-	// create a prefixed "blockDB" from baseDB
-	blockDB := prefixdb.New(blockStatePrefix, baseDB)
 	// create a prefixed "singletonDB" from baseDB
 	singletonDB := prefixdb.New(singletonStatePrefix, baseDB)
+	// create a prefixed "blockDB" from baseDB
+	blockDB := prefixdb.New(blockStatePrefix, baseDB)
 
 	// return state with created sub state components
 	return &state{
-		BlockState:     NewBlockState(blockDB, vm),
-		SingletonState: avax.NewSingletonState(singletonDB),
-		baseDB:         baseDB,
+		InitializedState: NewInitializedState(singletonDB),
+		BlockState:       NewBlockState(blockDB, vm),
+		baseDB:           baseDB,
 	}
 }
 

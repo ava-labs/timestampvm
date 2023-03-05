@@ -1,4 +1,4 @@
-// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -12,17 +12,17 @@ import (
 
 const (
 	lastAcceptedByte byte = iota
-)
 
-const (
 	// maximum block capacity of the cache
 	blockCacheSize = 8192
 )
 
-// persists lastAccepted block IDs with this key
-var lastAcceptedKey = []byte{lastAcceptedByte}
+var (
+	// persists lastAccepted block IDs with this key
+	lastAcceptedKey = []byte{lastAcceptedByte}
 
-var _ BlockState = &blockState{}
+	_ BlockState = &blockState{}
+)
 
 // BlockState defines methods to manage state with Blocks and LastAcceptedIDs.
 type BlockState interface {
@@ -35,7 +35,7 @@ type BlockState interface {
 // blockState implements BlocksState interface with database and cache.
 type blockState struct {
 	// cache to store blocks
-	blkCache cache.Cacher
+	blkCache cache.Cacher[ids.ID, *Block]
 	// block database
 	blockDB      database.Database
 	lastAccepted ids.ID
@@ -53,7 +53,7 @@ type blkWrapper struct {
 // NewBlockState returns BlockState with a new cache and given db
 func NewBlockState(db database.Database, vm *VM) BlockState {
 	return &blockState{
-		blkCache: &cache.LRU{Size: blockCacheSize},
+		blkCache: &cache.LRU[ids.ID, *Block]{Size: blockCacheSize},
 		blockDB:  db,
 		vm:       vm,
 	}
@@ -62,13 +62,13 @@ func NewBlockState(db database.Database, vm *VM) BlockState {
 // GetBlock gets Block from either cache or database
 func (s *blockState) GetBlock(blkID ids.ID) (*Block, error) {
 	// Check if cache has this blkID
-	if blkIntf, cached := s.blkCache.Get(blkID); cached {
+	if blk, cached := s.blkCache.Get(blkID); cached {
 		// there is a key but value is nil, so return an error
-		if blkIntf == nil {
+		if blk == nil {
 			return nil, database.ErrNotFound
 		}
 		// We found it return the block in cache
-		return blkIntf.(*Block), nil
+		return blk, nil
 	}
 
 	// get block bytes from db with the blkID key

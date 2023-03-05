@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+
+# Copyright (C) 2019-2023, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 set -o errexit
@@ -20,7 +21,7 @@ GOPATH="$(go env GOPATH)"
 TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
 
 # Set default binary directory location
-binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/plugins"
+binary_directory="$HOME/.avalanchego/plugins"
 name="tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
 
 if [[ $# -eq 1 ]]; then

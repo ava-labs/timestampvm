@@ -1,4 +1,4 @@
-// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
@@ -44,7 +44,7 @@ type Block struct {
 // Verify returns nil iff this block is valid.
 // To be valid, it must be that:
 // b.parent.Timestamp < b.Timestamp <= [local time] + 1 hour
-func (b *Block) Verify(ctx context.Context) error {
+func (b *Block) Verify(context.Context) error {
 	// Get [b]'s parent
 	parentID := b.Parent()
 	parent, err := b.vm.getBlock(parentID)
@@ -89,7 +89,7 @@ func (b *Block) Initialize(bytes []byte, status choices.Status, vm *VM) {
 
 // Accept sets this block's status to Accepted and sets lastAccepted to this
 // block's ID and saves this info to b.vm.DB
-func (b *Block) Accept(ctx context.Context) error {
+func (b *Block) Accept(context.Context) error {
 	b.SetStatus(choices.Accepted) // Change state of this block
 	blkID := b.ID()
 
@@ -112,7 +112,7 @@ func (b *Block) Accept(ctx context.Context) error {
 
 // Reject sets this block's status to Rejected and saves the status in state
 // Recall that b.vm.DB.Commit() must be called to persist to the DB
-func (b *Block) Reject(ctx context.Context) error {
+func (b *Block) Reject(context.Context) error {
 	b.SetStatus(choices.Rejected) // Change state of this block
 	if err := b.vm.state.PutBlock(b); err != nil {
 		return err

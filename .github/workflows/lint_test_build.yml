@@ -11,24 +11,29 @@ jobs:
     name: Lint files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          go-version: 1.19
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2.5.2
-        with:
-          version: v1.47
+          go-version: '1.19'
+          check-latest: true
+      - run: go version
+
+      - name: Run static analysis tests
+        shell: bash
+        run: scripts/lint.sh
 
   build-test:
     name: Build & Test
     runs-on: ubuntu-latest
     needs: lint
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          go-version: 1.19
+          go-version: '1.19'
+          check-latest: true
+      - run: go version
+
       - name: build_test
         shell: bash
         run: .github/workflows/build_and_test.sh
@@ -38,14 +43,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-test
     steps:
-      - name: Git checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.19
+          go-version: '1.19'
+          check-latest: true
+      - run: go version
+
       - name: Run e2e tests
         shell: bash
         run: scripts/run.sh
@@ -57,14 +61,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-test
     steps:
-      - name: Git checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.19
+          go-version: '1.19'
+          check-latest: true
+      - run: go version
+
       - name: Run load tests
         shell: bash
         run: scripts/tests.load.sh

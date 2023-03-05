@@ -1,19 +1,21 @@
-// (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package timestampvm
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/utils/formatting"
 )
 
+var errNoData = errors.New("argument Data cannot be empty")
+
 // StaticService defines the base service for the timestamp vm
 type StaticService struct{}
 
-// CreateStaticService ...
 func CreateStaticService() *StaticService {
 	return &StaticService{}
 }
@@ -32,9 +34,9 @@ type EncodeReply struct {
 }
 
 // Encode returns the encoded data
-func (ss *StaticService) Encode(_ *http.Request, args *EncodeArgs, reply *EncodeReply) error {
+func (*StaticService) Encode(_ *http.Request, args *EncodeArgs, reply *EncodeReply) error {
 	if len(args.Data) == 0 {
-		return fmt.Errorf("argument Data cannot be empty")
+		return errNoData
 	}
 	var argBytes []byte
 	if args.Length > 0 {
@@ -66,7 +68,7 @@ type DecodeReply struct {
 }
 
 // Decode returns the Decoded data
-func (ss *StaticService) Decode(_ *http.Request, args *DecodeArgs, reply *DecodeReply) error {
+func (*StaticService) Decode(_ *http.Request, args *DecodeArgs, reply *DecodeReply) error {
 	bytes, err := formatting.Decode(args.Encoding, args.Bytes)
 	if err != nil {
 		return fmt.Errorf("couldn't Decode data as string: %s", err)
