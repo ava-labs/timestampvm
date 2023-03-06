@@ -12,18 +12,24 @@ import (
 	"testing"
 	"time"
 
-	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/onsi/ginkgo/v2/formatter"
+	"github.com/onsi/gomega"
+
+	ginkgo "github.com/onsi/ginkgo/v2"
+
+	"sigs.k8s.io/yaml"
+
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+
+	anrclient "github.com/ava-labs/avalanche-network-runner/client"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/timestampvm/client"
+
 	"github.com/ava-labs/timestampvm/timestampvm"
-	log "github.com/inconshreveable/log15"
-	ginkgo "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/ginkgo/v2/formatter"
-	"github.com/onsi/gomega"
-	"sigs.k8s.io/yaml"
+
+	timestampvmclient "github.com/ava-labs/timestampvm/client"
 )
 
 func TestE2e(t *testing.T) {
@@ -140,7 +146,7 @@ const (
 )
 
 var (
-	cli               runner_sdk.Client
+	cli               anrclient.Client
 	timestampvmRPCEps []string
 )
 
@@ -155,7 +161,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	log, err := logFactory.Make("main")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	cli, err = runner_sdk.New(runner_sdk.Config{
+	cli, err = anrclient.New(anrclient.Config{
 		Endpoint:    gRPCEp,
 		DialTimeout: 10 * time.Second,
 	}, log)
@@ -167,8 +173,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		resp, err := cli.Start(
 			ctx,
 			execPath,
-			runner_sdk.WithPluginDir(pluginDir),
-			runner_sdk.WithBlockchainSpecs(
+			anrclient.WithPluginDir(pluginDir),
+			anrclient.WithBlockchainSpecs(
 				[]*rpcpb.BlockchainSpec{
 					{
 						VmName:      vmName,
@@ -178,7 +184,7 @@ var _ = ginkgo.BeforeSuite(func() {
 				},
 			),
 			// Disable all rate limiting
-			runner_sdk.WithGlobalNodeConfig(`{
+			anrclient.WithGlobalNodeConfig(`{
 				"log-level":"debug",
 				"throttler-inbound-validator-alloc-size":"107374182",
 				"throttler-inbound-node-max-processing-msgs":"100000",
@@ -276,7 +282,7 @@ done:
 		u := uris[i] + fmt.Sprintf("/ext/bc/%s", blockchainID)
 		instances[i] = instance{
 			uri: u,
-			cli: client.New(u),
+			cli: timestampvmclient.New(u),
 		}
 	}
 })
@@ -285,7 +291,7 @@ var instances []instance
 
 type instance struct {
 	uri string
-	cli client.Client
+	cli timestampvmclient.Client
 }
 
 var _ = ginkgo.AfterSuite(func() {
@@ -296,7 +302,6 @@ var _ = ginkgo.AfterSuite(func() {
 		_, err := cli.Stop(ctx)
 		cancel()
 		gomega.Expect(err).Should(gomega.BeNil())
-		log.Warn("cluster shutdown result", "err", err)
 
 	case modeRun:
 		outf("{{yellow}}skipping shutting down cluster{{/}}\n")
@@ -305,7 +310,6 @@ var _ = ginkgo.AfterSuite(func() {
 	outf("{{red}}shutting down client{{/}}\n")
 	err := cli.Close()
 	gomega.Expect(err).Should(gomega.BeNil())
-	log.Warn("client shutdown result", "err", err)
 })
 
 var _ = ginkgo.Describe("[ProposeBlock]", func() {
@@ -338,12 +342,12 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 	})
 
 	ginkgo.It("confirm block processed on all nodes", func() {
-		for i, inst := range instances {
+		for _, inst := range instances {
 			cli := inst.cli
 			for { // Wait for block to be accepted
 				timestamp, bdata, height, _, pid, err := cli.GetBlock(context.Background(), nil)
 				if height == 0 {
-					log.Info("waiting for height to increase", "instance", i)
+					outf("{{yellow}}waiting for height to increase{{/}}\n")
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -352,7 +356,6 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 				gomega.Ω(height).Should(gomega.Equal(uint64(1)))
 				gomega.Ω(pid).Should(gomega.Equal(gid))
 				gomega.Ω(err).Should(gomega.BeNil())
-				log.Info("height increased", "instance", i)
 				break
 			}
 		}

@@ -12,14 +12,17 @@ import (
 	"testing"
 	"time"
 
-	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	log "github.com/inconshreveable/log15"
-	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/formatter"
 	"github.com/onsi/gomega"
+
+	ginkgo "github.com/onsi/ginkgo/v2"
+
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+
+	anrclient "github.com/ava-labs/avalanche-network-runner/client"
+
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 func TestLoad(t *testing.T) {
@@ -148,7 +151,7 @@ func init() {
 }
 
 var (
-	cli               runner_sdk.Client
+	cli               anrclient.Client
 	timestampvmRPCEps []string
 )
 
@@ -168,7 +171,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	log, err := logFactory.Make("main")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	cli, err = runner_sdk.New(runner_sdk.Config{
+	cli, err = anrclient.New(anrclient.Config{
 		Endpoint:    gRPCEp,
 		DialTimeout: 10 * time.Second,
 	}, log)
@@ -180,8 +183,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		resp, err := cli.Start(
 			ctx,
 			execPath,
-			runner_sdk.WithPluginDir(pluginDir),
-			runner_sdk.WithBlockchainSpecs(
+			anrclient.WithPluginDir(pluginDir),
+			anrclient.WithBlockchainSpecs(
 				[]*rpcpb.BlockchainSpec{
 					{
 						VmName:       vmName,
@@ -192,7 +195,7 @@ var _ = ginkgo.BeforeSuite(func() {
 				},
 			),
 			// Disable all rate limiting
-			runner_sdk.WithGlobalNodeConfig(`{
+			anrclient.WithGlobalNodeConfig(`{
 				"log-level":"warn",
 				"proposervm-use-current-height":true,
 				"throttler-inbound-validator-alloc-size":"107374182",
@@ -278,12 +281,10 @@ var _ = ginkgo.AfterSuite(func() {
 	_, err := cli.Stop(ctx)
 	cancel()
 	gomega.Expect(err).Should(gomega.BeNil())
-	log.Warn("cluster shutdown result", "err", err)
 
 	outf("{{red}}shutting down client{{/}}\n")
 	err = cli.Close()
 	gomega.Expect(err).Should(gomega.BeNil())
-	log.Warn("client shutdown result", "err", err)
 })
 
 // Tests only assumes that [clientURIs] has been populated by BeforeSuite
@@ -293,7 +294,6 @@ var _ = ginkgo.Describe("[ProposeBlock]", func() {
 
 		err := RunLoadTest(context.Background(), workers, terminalHeight, 2*time.Minute)
 		gomega.Ω(err).Should(gomega.BeNil())
-		log.Info("Load test completed successfully")
 	})
 })
 

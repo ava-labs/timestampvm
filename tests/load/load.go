@@ -10,10 +10,12 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/inconshreveable/log15"
+
+	"golang.org/x/sync/errgroup"
+
 	"github.com/ava-labs/timestampvm/tests/load/client"
 	"github.com/ava-labs/timestampvm/timestampvm"
-	log "github.com/inconshreveable/log15"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -33,7 +35,8 @@ type Worker interface {
 	GetLastAcceptedHeight(ctx context.Context) (uint64, error)
 }
 
-// timestampvmLoadWorker implements the LoadWorker interface and adds continuous load through its client.
+// timestampvmLoadWorker implements the LoadWorker interface and adds continuous
+// load through its client.
 type timestampvmLoadWorker struct {
 	uri string
 	client.Client

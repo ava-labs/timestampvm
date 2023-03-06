@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting"
+
 	"github.com/ava-labs/timestampvm/timestampvm"
 )
 
