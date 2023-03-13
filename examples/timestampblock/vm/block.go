@@ -13,10 +13,7 @@ import (
 )
 
 // Type assertions
-var (
-	_ stack.StatelessBlock = (*Block)(nil)
-	_ stack.Decider        = (*chainDecider)(nil)
-)
+var _ stack.StatelessBlock = (*Block)(nil)
 
 // Block defines a stateless block
 type Block struct {
@@ -48,8 +45,9 @@ func ParseBlock(ctx context.Context, b []byte) (*Block, error) {
 // ID returns the ID of this block
 func (b *Block) ID() ids.ID { return b.id }
 
-// Root should never be called for this implementation
-func (b *Block) Root() ids.ID { panic("not implemented") }
+// Root returns the empty ID
+// TODO
+func (b *Block) Root() ids.ID { return ids.Empty }
 
 // ParentID returns [b]'s parent's ID
 func (b *Block) Parent() ids.ID { return b.PrntID }
@@ -62,23 +60,3 @@ func (b *Block) Timestamp() time.Time { return time.Unix(b.Tmstmp, 0) }
 
 // Bytes returns the byte repr. of this block
 func (b *Block) Bytes() []byte { return b.bytes }
-
-type Acceptor interface {
-	Accept(*Block) error
-}
-
-// chainDecider implements the stack.Decider interface
-type chainDecider struct {
-	*Block
-
-	acceptor Acceptor
-}
-
-func (d *chainDecider) Accept(ctx context.Context) error {
-	return d.acceptor.Accept(d.Block)
-}
-
-// Abandon is a no-op since there is nothing to clean up on Abandon
-func (d *chainDecider) Abandon(ctx context.Context) error {
-	return nil
-}
