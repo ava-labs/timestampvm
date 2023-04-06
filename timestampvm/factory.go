@@ -14,4 +14,4 @@ var _ vms.Factory = &Factory{}
 type Factory struct{}
 
 // New ...
-func (f *Factory) New(logging.Logger) (interface{}, error) { return &VM{}, nil }
+func (*Factory) New(logging.Logger) (interface{}, error) { return &VM{}, nil }

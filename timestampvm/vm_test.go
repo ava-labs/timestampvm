@@ -12,156 +12,156 @@ import (
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/version"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var blockchainID = ids.ID{1, 2, 3}
 
-// Assert that after initialization, the vm has the state we expect
+// require that after initialization, the vm has the state we expect
 func TestGenesis(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.TODO()
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
-	assert.NoError(err)
+	require.NoError(err)
 	// Verify that the db is initialized
 	ok, err := vm.state.IsInitialized()
-	assert.NoError(err)
-	assert.True(ok)
+	require.NoError(err)
+	require.True(ok)
 
 	// Get lastAccepted
 	lastAccepted, err := vm.LastAccepted(ctx)
-	assert.NoError(err)
-	assert.NotEqual(ids.Empty, lastAccepted)
+	require.NoError(err)
+	require.NotEqual(ids.Empty, lastAccepted)
 
 	// Verify that getBlock returns the genesis block, and the genesis block
 	// is the type we expect
 	genesisBlock, err := vm.getBlock(lastAccepted) // genesisBlock as snowman.Block
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Verify that the genesis block has the data we expect
-	assert.Equal(ids.Empty, genesisBlock.Parent())
-	assert.Equal([32]byte{0, 0, 0, 0, 0}, genesisBlock.Data())
+	require.Equal(ids.Empty, genesisBlock.Parent())
+	require.Equal([32]byte{0, 0, 0, 0, 0}, genesisBlock.Data())
 }
 
 func TestHappyPath(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.TODO()
 
 	// Initialize the vm
 	vm, snowCtx, msgChan, err := newTestVM()
-	assert.NoError(err)
+	require.NoError(err)
 
 	lastAcceptedID, err := vm.LastAccepted(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 	genesisBlock, err := vm.getBlock(lastAcceptedID)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// in an actual execution, the engine would set the preference
-	assert.NoError(vm.SetPreference(ctx, genesisBlock.ID()))
+	require.NoError(vm.SetPreference(ctx, genesisBlock.ID()))
 
 	snowCtx.Lock.Lock()
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 1}) // propose a value
 	snowCtx.Lock.Unlock()
 
-	select { // assert there is a pending tx message to the engine
+	select { // require there is a pending tx message to the engine
 	case msg := <-msgChan:
-		assert.Equal(common.PendingTxs, msg)
+		require.Equal(common.PendingTxs, msg)
 	default:
-		assert.FailNow("should have been pendingTxs message on channel")
+		require.FailNow("should have been pendingTxs message on channel")
 	}
 
 	// build the block
 	snowCtx.Lock.Lock()
 	snowmanBlock2, err := vm.BuildBlock(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 
-	assert.NoError(snowmanBlock2.Verify(ctx))
-	assert.NoError(snowmanBlock2.Accept(ctx))
-	assert.NoError(vm.SetPreference(ctx, snowmanBlock2.ID()))
+	require.NoError(snowmanBlock2.Verify(ctx))
+	require.NoError(snowmanBlock2.Accept(ctx))
+	require.NoError(vm.SetPreference(ctx, snowmanBlock2.ID()))
 
 	lastAcceptedID, err = vm.LastAccepted(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Should be the block we just accepted
 	block2, err := vm.getBlock(lastAcceptedID)
-	assert.NoError(err)
+	require.NoError(err)
 
-	// Assert the block we accepted has the data we expect
-	assert.Equal(genesisBlock.ID(), block2.Parent())
-	assert.Equal([DataLen]byte{0, 0, 0, 0, 1}, block2.Data())
-	assert.Equal(snowmanBlock2.ID(), block2.ID())
-	assert.NoError(block2.Verify(ctx))
+	// require the block we accepted has the data we expect
+	require.Equal(genesisBlock.ID(), block2.Parent())
+	require.Equal([DataLen]byte{0, 0, 0, 0, 1}, block2.Data())
+	require.Equal(snowmanBlock2.ID(), block2.ID())
+	require.NoError(block2.Verify(ctx))
 
 	vm.proposeBlock([DataLen]byte{0, 0, 0, 0, 2}) // propose a block
 	snowCtx.Lock.Unlock()
 
 	select { // verify there is a pending tx message to the engine
 	case msg := <-msgChan:
-		assert.Equal(common.PendingTxs, msg)
+		require.Equal(common.PendingTxs, msg)
 	default:
-		assert.FailNow("should have been pendingTxs message on channel")
+		require.FailNow("should have been pendingTxs message on channel")
 	}
 
 	snowCtx.Lock.Lock()
 
 	// build the block
 	snowmanBlock3, err := vm.BuildBlock(ctx)
-	assert.NoError(err)
-	assert.NoError(snowmanBlock3.Verify(ctx))
-	assert.NoError(snowmanBlock3.Accept(ctx))
-	assert.NoError(vm.SetPreference(ctx, snowmanBlock3.ID()))
+	require.NoError(err)
+	require.NoError(snowmanBlock3.Verify(ctx))
+	require.NoError(snowmanBlock3.Accept(ctx))
+	require.NoError(vm.SetPreference(ctx, snowmanBlock3.ID()))
 
 	lastAcceptedID, err = vm.LastAccepted(ctx)
-	assert.NoError(err)
+	require.NoError(err)
 	// The block we just accepted
 	block3, err := vm.getBlock(lastAcceptedID)
-	assert.NoError(err)
+	require.NoError(err)
 
-	// Assert the block we accepted has the data we expect
-	assert.Equal(snowmanBlock2.ID(), block3.Parent())
-	assert.Equal([DataLen]byte{0, 0, 0, 0, 2}, block3.Data())
-	assert.Equal(snowmanBlock3.ID(), block3.ID())
-	assert.NoError(block3.Verify(ctx))
+	// require the block we accepted has the data we expect
+	require.Equal(snowmanBlock2.ID(), block3.Parent())
+	require.Equal([DataLen]byte{0, 0, 0, 0, 2}, block3.Data())
+	require.Equal(snowmanBlock3.ID(), block3.ID())
+	require.NoError(block3.Verify(ctx))
 
 	// Next, check the blocks we added are there
 	block2FromState, err := vm.getBlock(block2.ID())
-	assert.NoError(err)
-	assert.Equal(block2.ID(), block2FromState.ID())
+	require.NoError(err)
+	require.Equal(block2.ID(), block2FromState.ID())
 
 	block3FromState, err := vm.getBlock(snowmanBlock3.ID())
-	assert.NoError(err)
-	assert.Equal(snowmanBlock3.ID(), block3FromState.ID())
+	require.NoError(err)
+	require.Equal(snowmanBlock3.ID(), block3FromState.ID())
 
 	snowCtx.Lock.Unlock()
 }
 
 func TestService(t *testing.T) {
 	// Initialize the vm
-	assert := assert.New(t)
+	require := require.New(t)
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
-	assert.NoError(err)
+	require.NoError(err)
 	service := Service{vm}
-	assert.NoError(service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
+	require.NoError(service.GetBlock(nil, &GetBlockArgs{}, &GetBlockReply{}))
 }
 
 func TestSetState(t *testing.T) {
 	// Initialize the vm
-	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.TODO()
 	// Initialize the vm
 	vm, _, _, err := newTestVM()
-	assert.NoError(err)
+	require.NoError(err)
 	// bootstrapping
-	assert.NoError(vm.SetState(ctx, snow.Bootstrapping))
-	assert.False(vm.bootstrapped.Get())
+	require.NoError(vm.SetState(ctx, snow.Bootstrapping))
+	require.False(vm.bootstrapped.Get())
 	// bootstrapped
-	assert.NoError(vm.SetState(ctx, snow.NormalOp))
-	assert.True(vm.bootstrapped.Get())
+	require.NoError(vm.SetState(ctx, snow.NormalOp))
+	require.True(vm.bootstrapped.Get())
 	// unknown
 	unknownState := snow.State(99)
-	assert.ErrorIs(vm.SetState(ctx, unknownState), snow.ErrUnknownState)
+	require.ErrorIs(vm.SetState(ctx, unknownState), snow.ErrUnknownState)
 }
 
 func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
