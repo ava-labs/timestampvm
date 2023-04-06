@@ -155,10 +155,10 @@ func TestSetState(t *testing.T) {
 	assert.NoError(err)
 	// bootstrapping
 	assert.NoError(vm.SetState(ctx, snow.Bootstrapping))
-	assert.False(vm.bootstrapped.GetValue())
+	assert.False(vm.bootstrapped.Get())
 	// bootstrapped
 	assert.NoError(vm.SetState(ctx, snow.NormalOp))
-	assert.True(vm.bootstrapped.GetValue())
+	assert.True(vm.bootstrapped.Get())
 	// unknown
 	unknownState := snow.State(99)
 	assert.ErrorIs(vm.SetState(ctx, unknownState), snow.ErrUnknownState)

@@ -4,7 +4,7 @@
 package timestampvm
 
 import (
-	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms"
 )
 
@@ -14,4 +14,4 @@ var _ vms.Factory = &Factory{}
 type Factory struct{}
 
 // New ...
-func (f *Factory) New(*snow.Context) (interface{}, error) { return &VM{}, nil }
+func (f *Factory) New(logging.Logger) (interface{}, error) { return &VM{}, nil }

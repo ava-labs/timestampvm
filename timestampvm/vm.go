@@ -69,7 +69,7 @@ type VM struct {
 	verifiedBlocks map[ids.ID]*Block
 
 	// Indicates that this VM has finised bootstrapping for the chain
-	bootstrapped utils.AtomicBool
+	bootstrapped utils.Atomic[bool]
 }
 
 // Initialize this vm
@@ -374,17 +374,17 @@ func (vm *VM) SetState(ctx context.Context, state snow.State) error {
 
 // onBootstrapStarted marks this VM as bootstrapping
 func (vm *VM) onBootstrapStarted() error {
-	vm.bootstrapped.SetValue(false)
+	vm.bootstrapped.Set(false)
 	return nil
 }
 
 // onNormalOperationsStarted marks this VM as bootstrapped
 func (vm *VM) onNormalOperationsStarted() error {
 	// No need to set it again
-	if vm.bootstrapped.GetValue() {
+	if vm.bootstrapped.Get() {
 		return nil
 	}
-	vm.bootstrapped.SetValue(true)
+	vm.bootstrapped.Set(true)
 	return nil
 }
 

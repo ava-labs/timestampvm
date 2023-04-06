@@ -7,7 +7,6 @@ import (
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/database/prefixdb"
 	"github.com/ava-labs/avalanchego/database/versiondb"
-	"github.com/ava-labs/avalanchego/vms/components/avax"
 )
 
 var (
@@ -24,7 +23,7 @@ var (
 type State interface {
 	// SingletonState is defined in avalanchego,
 	// it is used to understand if db is initialized already.
-	avax.SingletonState
+	SingletonState
 	BlockState
 
 	Commit() error
@@ -32,7 +31,7 @@ type State interface {
 }
 
 type state struct {
-	avax.SingletonState
+	SingletonState
 	BlockState
 
 	baseDB *versiondb.Database
@@ -50,7 +49,7 @@ func NewState(db database.Database, vm *VM) State {
 	// return state with created sub state components
 	return &state{
 		BlockState:     NewBlockState(blockDB, vm),
-		SingletonState: avax.NewSingletonState(singletonDB),
+		SingletonState: NewSingletonState(singletonDB),
 		baseDB:         baseDB,
 	}
 }

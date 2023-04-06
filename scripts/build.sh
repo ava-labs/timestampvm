@@ -17,22 +17,23 @@ export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 GOPATH="$(go env GOPATH)"
 
 # TimestampVM root directory
-TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+TIMESTAMPVM_PATH=$(
+    cd "$(dirname "${BASH_SOURCE[0]}")"
+    cd .. && pwd
+)
 
 # Set default binary directory location
 binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/plugins"
-name="tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
 
 if [[ $# -eq 1 ]]; then
     binary_directory=$1
-elif [[ $# -eq 2 ]]; then
-    binary_directory=$1
-    name=$2
-elif [[ $# -ne 0 ]]; then
+elif [[ $# -eq 0 ]]; then
+    binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"
+else
     echo "Invalid arguments to build timestampvm. Requires either no arguments (default) or one arguments to specify binary location."
     exit 1
 fi
 
 # Build timestampvm, which is run as a subprocess
-echo "Building timestampvm in $binary_directory/$name"
-go build -o "$binary_directory/$name" "main/"*.go
+echo "Building timestampvm in $binary_directory"
+go build -o "$binary_directory" "main/"*.go
