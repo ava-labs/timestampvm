@@ -28,7 +28,7 @@ binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/plugins"
 if [[ $# -eq 1 ]]; then
     binary_directory=$1
 elif [[ $# -eq 0 ]]; then
-    binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH/srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"
+    binary_directory="$GOPATH/src/github.com/ava-labs/avalanchego/build/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH"
 else
     echo "Invalid arguments to build timestampvm. Requires either no arguments (default) or one arguments to specify binary location."
     exit 1
