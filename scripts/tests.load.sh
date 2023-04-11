@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+# (c) 2019-2023, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 set -e
@@ -17,7 +17,10 @@ if ! [[ "$0" =~ scripts/tests.load.sh ]]; then
 fi
 
 # TimestampVM root directory
-TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+TIMESTAMPVM_PATH=$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  cd .. && pwd
+)
 TERMINAL_HEIGHT=${TERMINAL_HEIGHT:-'1000000'}
 
 # Load the versions
@@ -49,21 +52,21 @@ PLUGINS_PATH=${BUILD_PATH}/plugins
 
 # previous binary already deleted in last build phase
 go build \
--o ${PLUGINS_PATH}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
-./main/
+  -o ${PLUGINS_PATH}/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+  ./main/
 
 ############################
 echo "creating genesis file"
-echo -n "e2e" > ${ROOT_PATH}/.genesis
+echo -n "e2e" >${ROOT_PATH}/.genesis
 
 ############################
 echo "creating vm config"
-echo -n "{}" > ${ROOT_PATH}/.config
+echo -n "{}" >${ROOT_PATH}/.config
 
 ############################
 echo "creating subnet config"
 rm -f /tmp/.subnet
-cat <<EOF > ${ROOT_PATH}/.subnet
+cat <<EOF >${ROOT_PATH}/.subnet
 {
   "proposerMinBlockDelay":0
 }
@@ -96,9 +99,9 @@ fi
 
 echo "launch avalanche-network-runner in the background"
 $BIN server \
---log-level warn \
---port=":12342" \
---disable-grpc-gateway &
+  --log-level warn \
+  --port=":12342" \
+  --disable-grpc-gateway &
 PID=${!}
 
 ############################
@@ -107,15 +110,15 @@ PID=${!}
 # Use "--ginkgo.focus" to select tests.
 echo "running load tests"
 ./tests/load/load.test \
---ginkgo.v \
---network-runner-log-level warn \
---network-runner-grpc-endpoint="0.0.0.0:12342" \
---avalanchego-path=${BUILD_PATH}/avalanchego \
---avalanchego-plugin-dir=${PLUGINS_PATH} \
---vm-genesis-path=${ROOT_PATH}/.genesis \
---vm-config-path=${ROOT_PATH}/.config \
---subnet-config-path=${ROOT_PATH}/.subnet \
---terminal-height=${TERMINAL_HEIGHT}
+  --ginkgo.v \
+  --network-runner-log-level warn \
+  --network-runner-grpc-endpoint="0.0.0.0:12342" \
+  --avalanchego-path=${BUILD_PATH}/avalanchego \
+  --avalanchego-plugin-dir=${PLUGINS_PATH} \
+  --vm-genesis-path=${ROOT_PATH}/.genesis \
+  --vm-config-path=${ROOT_PATH}/.config \
+  --subnet-config-path=${ROOT_PATH}/.subnet \
+  --terminal-height=${TERMINAL_HEIGHT}
 
 ############################
 # load.test" already terminates the cluster

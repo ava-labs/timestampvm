@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# (c) 2019-2022, Ava Labs, Inc. All rights reserved.
+# (c) 2019-2023, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 set -e
@@ -24,7 +24,10 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
 fi
 
 # TimestampVM root directory
-TIMESTAMPVM_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )"; cd .. && pwd )
+TIMESTAMPVM_PATH=$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  cd .. && pwd
+)
 
 # Load the versions
 source "$TIMESTAMPVM_PATH"/scripts/versions.sh
@@ -83,8 +86,8 @@ echo "building timestampvm"
 rm -f /tmp/avalanchego-${avalanche_version}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH
 
 go build \
--o /tmp/avalanchego-${avalanche_version}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
-./main/
+  -o /tmp/avalanchego-${avalanche_version}/plugins/tGas3T58KzdjLHhBDMnH2TvrddhqTji5iZAMZ3RXs2NLpSnhH \
+  ./main/
 find /tmp/avalanchego-${avalanche_version}
 
 ############################
@@ -92,14 +95,14 @@ find /tmp/avalanchego-${avalanche_version}
 ############################
 
 echo "creating genesis file"
-echo -n "e2e" > /tmp/.genesis
+echo -n "e2e" >/tmp/.genesis
 
 ############################
 
 ############################
 
 echo "creating vm config"
-echo -n "{}" > /tmp/.config
+echo -n "{}" >/tmp/.config
 
 ############################
 
@@ -130,9 +133,9 @@ fi
 
 echo "launch avalanche-network-runner in the background"
 $BIN server \
---log-level debug \
---port=":12342" \
---disable-grpc-gateway &
+  --log-level debug \
+  --port=":12342" \
+  --disable-grpc-gateway &
 PID=${!}
 
 ############################
@@ -141,15 +144,15 @@ PID=${!}
 # Use "--ginkgo.focus" to select tests.
 echo "running e2e tests"
 ./tests/e2e/e2e.test \
---ginkgo.v \
---network-runner-log-level info \
---network-runner-grpc-endpoint="0.0.0.0:12342" \
---avalanchego-path=${AVALANCHEGO_PATH} \
---avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
---vm-genesis-path=/tmp/.genesis \
---vm-config-path=/tmp/.config \
---output-path=/tmp/avalanchego-${avalanche_version}/output.yaml \
---mode=${MODE}
+  --ginkgo.v \
+  --network-runner-log-level info \
+  --network-runner-grpc-endpoint="0.0.0.0:12342" \
+  --avalanchego-path=${AVALANCHEGO_PATH} \
+  --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
+  --vm-genesis-path=/tmp/.genesis \
+  --vm-config-path=/tmp/.config \
+  --output-path=/tmp/avalanchego-${avalanche_version}/output.yaml \
+  --mode=${MODE}
 STATUS=$?
 
 ############################
