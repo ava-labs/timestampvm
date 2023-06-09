@@ -184,10 +184,12 @@ var _ = ginkgo.BeforeSuite(func() {
 			runner_sdk.WithBlockchainSpecs(
 				[]*rpcpb.BlockchainSpec{
 					{
-						VmName:       vmName,
-						Genesis:      vmGenesisPath,
-						ChainConfig:  vmConfigPath,
-						SubnetConfig: subnetConfigPath,
+						VmName:      vmName,
+						Genesis:     vmGenesisPath,
+						ChainConfig: vmConfigPath,
+						SubnetSpec: &rpcpb.SubnetSpec{
+							SubnetConfig: subnetConfigPath,
+						},
 					},
 				},
 			),
