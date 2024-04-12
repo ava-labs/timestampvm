@@ -7,13 +7,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/database"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/rpc/v2"
 	log "github.com/inconshreveable/log15"
 	"go.uber.org/zap"
 
-	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/choices"
@@ -48,8 +49,8 @@ var (
 // and a piece of data (a string)
 type VM struct {
 	// The context of this vm
-	snowCtx   *snow.Context
-	dbManager manager.Manager
+	snowCtx *snow.Context
+	db      database.Database
 
 	// State of this VM
 	state State
@@ -83,7 +84,7 @@ type VM struct {
 func (vm *VM) Initialize(
 	ctx context.Context,
 	snowCtx *snow.Context,
-	dbManager manager.Manager,
+	db database.Database,
 	genesisData []byte,
 	_ []byte,
 	_ []byte,
@@ -98,13 +99,13 @@ func (vm *VM) Initialize(
 	}
 	log.Info("Initializing Timestamp VM", "Version", version)
 
-	vm.dbManager = dbManager
+	vm.db = db
 	vm.snowCtx = snowCtx
 	vm.toEngine = toEngine
 	vm.verifiedBlocks = make(map[ids.ID]*Block)
 
 	// Create new state
-	vm.state = NewState(vm.dbManager.Current().Database, vm)
+	vm.state = NewState(vm.db, vm)
 
 	// Initialize genesis
 	if err := vm.initGenesis(genesisData); err != nil {
@@ -178,7 +179,7 @@ func (vm *VM) initGenesis(genesisData []byte) error {
 // CreateHandlers returns a map where:
 // Keys: The path extension for this VM's API (empty in this case)
 // Values: The handler for the API
-func (vm *VM) CreateHandlers(_ context.Context) (map[string]*common.HTTPHandler, error) {
+func (vm *VM) CreateHandlers(_ context.Context) (map[string]http.Handler, error) {
 	server := rpc.NewServer()
 	server.RegisterCodec(json.NewCodec(), "application/json")
 	server.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
@@ -186,18 +187,15 @@ func (vm *VM) CreateHandlers(_ context.Context) (map[string]*common.HTTPHandler,
 		return nil, err
 	}
 
-	return map[string]*common.HTTPHandler{
-		"": {
-			LockOptions: common.WriteLock,
-			Handler:     server,
-		},
+	return map[string]http.Handler{
+		"": server,
 	}, nil
 }
 
 // CreateStaticHandlers returns a map where:
 // Keys: The path extension for this VM's static API
 // Values: The handler for that static API
-func (*VM) CreateStaticHandlers(_ context.Context) (map[string]*common.HTTPHandler, error) {
+func (*VM) CreateStaticHandlers(_ context.Context) (map[string]http.Handler, error) {
 	server := rpc.NewServer()
 	server.RegisterCodec(json.NewCodec(), "application/json")
 	server.RegisterCodec(json.NewCodec(), "application/json;charset=UTF-8")
@@ -205,11 +203,8 @@ func (*VM) CreateStaticHandlers(_ context.Context) (map[string]*common.HTTPHandl
 		return nil, err
 	}
 
-	return map[string]*common.HTTPHandler{
-		"": {
-			LockOptions: common.NoLock,
-			Handler:     server,
-		},
+	return map[string]http.Handler{
+		"": server,
 	}, nil
 }
 
@@ -417,7 +412,7 @@ func (*VM) AppResponse(_ context.Context, _ ids.NodeID, _ uint32, _ []byte) erro
 }
 
 // This VM doesn't (currently) have any app-specific messages
-func (*VM) AppRequestFailed(_ context.Context, _ ids.NodeID, _ uint32) error {
+func (*VM) AppRequestFailed(_ context.Context, _ ids.NodeID, _ uint32, _ *common.AppError) error {
 	return nil
 }
 
@@ -425,10 +420,14 @@ func (*VM) CrossChainAppRequest(_ context.Context, _ ids.ID, _ uint32, _ time.Ti
 	return nil
 }
 
-func (*VM) CrossChainAppRequestFailed(_ context.Context, _ ids.ID, _ uint32) error {
+func (*VM) CrossChainAppRequestFailed(_ context.Context, _ ids.ID, _ uint32, _ *common.AppError) error {
 	return nil
 }
 
 func (*VM) CrossChainAppResponse(_ context.Context, _ ids.ID, _ uint32, _ []byte) error {
 	return nil
+}
+
+func (*VM) GetBlockIDAtHeight(_ context.Context, _ uint64) (ids.ID, error) {
+	return ids.Empty, nil
 }

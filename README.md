@@ -8,7 +8,7 @@ TimestampVM defines a blockchain that is a timestamp server. Each block in the b
 
 ## Running the VM
 [`scripts/run.sh`](scripts/run.sh) automatically installs [avalanchego], sets up a local network,
-and creates a `timestampvm` genesis file. To build and run E2E tests, you need to set the variable `E2E` before it: `E2E=true ./scripts/run.sh 1.7.11`
+and creates a `timestampvm` genesis file. To build and run E2E tests, you need to set the variable `E2E` before it: `E2E=true ./scripts/run.sh 1.11.4`
 
 *Note: The above script relies on ginkgo to run successfully. Ensure that $GOPATH/bin is part of your $PATH before running the script.*  
 
@@ -17,14 +17,14 @@ _See [`tests/e2e`](tests/e2e) to see how it's set up and how its client requests
 ```bash
 # to startup a local cluster (good for development)
 cd ${HOME}/go/src/github.com/ava-labs/timestampvm
-./scripts/run.sh 1.9.3
+./scripts/run.sh 1.11.4
 
 # to run full e2e tests and shut down cluster afterwards
 cd ${HOME}/go/src/github.com/ava-labs/timestampvm
-E2E=true ./scripts/run.sh 1.9.3
+E2E=true ./scripts/run.sh 1.11.4
 
 # inspect cluster endpoints when ready
-cat /tmp/avalanchego-v1.9.3/output.yaml
+cat /tmp/avalanchego-v1.11.4/output.yaml
 <<COMMENT
 endpoint: /ext/bc/2VCAhX6vE3UnXC6s1CBPE6jJ4c4cHWMfPgCptuWS59pQ9vbeLM
 logsDir: ...
@@ -76,7 +76,7 @@ AvalancheGo.
 
 To kickoff a load test, all you need to do is run the following command:
 ```bash
-./scripts/tests.load.sh 1.9.3
+./scripts/tests.load.sh 1.11.4
 ```
 
 This will automatically:

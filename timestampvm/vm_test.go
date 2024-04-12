@@ -5,13 +5,12 @@ package timestampvm
 
 import (
 	"context"
+	"github.com/ava-labs/avalanchego/database/memdb"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/database/manager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
-	"github.com/ava-labs/avalanchego/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -165,15 +164,10 @@ func TestSetState(t *testing.T) {
 }
 
 func newTestVM() (*VM, *snow.Context, chan common.Message, error) {
-	dbManager := manager.NewMemDB(&version.Semantic{
-		Major: 1,
-		Minor: 0,
-		Patch: 0,
-	})
+	db := memdb.New()
 	msgChan := make(chan common.Message, 1)
 	vm := &VM{}
-	snowCtx := snow.DefaultContextTest()
-	snowCtx.ChainID = blockchainID
-	err := vm.Initialize(context.TODO(), snowCtx, dbManager, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
-	return vm, snowCtx, msgChan, err
+	snowCtx := snow.Context{ChainID: blockchainID}
+	err := vm.Initialize(context.TODO(), &snowCtx, db, []byte{0, 0, 0, 0, 0}, nil, nil, msgChan, nil, nil)
+	return vm, &snowCtx, msgChan, err
 }
