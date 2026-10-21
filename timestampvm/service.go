@@ -83,7 +83,7 @@ func (s *Service) GetBlock(_ *http.Request, args *GetBlockArgs, reply *GetBlockR
 	}
 
 	// Fill out the response with the block's data
-	reply.Timestamp = json.Uint64(block.Timestamp().Unix())
+	reply.Timestamp = json.Uint64(block.Timestamp().Unix()) //nolint:gosec // block timestamps are never negative
 	data := block.Data()
 	reply.Data, err = formatting.Encode(formatting.Hex, data[:])
 	reply.Height = json.Uint64(block.Hght)
